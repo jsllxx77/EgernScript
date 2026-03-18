@@ -5,7 +5,12 @@ const DEFAULT_DISK_PATH = '/';
 const STORAGE_PREFIX = 'server-monitor-widget';
 
 export default async function (ctx) {
-  const config = readConfig(ctx.env || {});
+  const env = ctx.env || {};
+  if (isStaticDebugEnabled(env)) {
+    return renderStaticDebugWidget(firstNonEmpty(env.TITLE, env.title) || DEFAULT_TITLE, ctx.widgetFamily);
+  }
+
+  const config = readConfig(env);
   let session;
 
   try {
@@ -35,6 +40,11 @@ export default async function (ctx) {
       } catch (_) {}
     }
   }
+}
+
+function isStaticDebugEnabled(env) {
+  const value = firstNonEmpty(env.DEBUG_STATIC, env.debug_static, env.debugStatic).toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
 }
 
 function readConfig(env) {
@@ -295,6 +305,37 @@ function renderLargeWidget(view) {
       renderFooter(view),
     ],
   };
+}
+
+function renderStaticDebugWidget(title, family) {
+  const debugView = {
+    title,
+    status: '静态',
+    statusColor: '#63D2A1',
+    iface: 'debug0',
+    uptime: '1d 2h',
+    load: '0.12 0.08 0.05',
+    memory: '4.2G/23G (18%)',
+    disk: '12G/40G (30%)',
+    inbound: '123 KB/s',
+    outbound: '159 KB/s',
+    inboundCompact: '123K/s',
+    outboundCompact: '159K/s',
+    trafficLine: '↓ 123 KB/s    ↑ 159 KB/s',
+    memoryLine: '内存 4.2G/23G (18%)',
+    loadLine: '负载 0.12 0.08 0.05',
+    diskLine: '磁盘 12G/40G (30%)',
+    uptimeLine: '运行 1d 2h',
+    ifaceLine: '网卡 debug0',
+    memoryPrimary: '4.2G/23G',
+    memorySecondary: '18%',
+    diskPrimary: '12G/40G',
+    diskSecondary: '30%',
+    uptimeCompact: '1d 2h',
+    refreshedAt: new Date().toISOString(),
+  };
+
+  return renderWidget(debugView, family);
 }
 
 function renderSmallWidget(view) {
