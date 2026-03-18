@@ -129,6 +129,14 @@ function buildProbeCommand(config) {
     'MEM="$(free -m 2>/dev/null | awk \'/^Mem:/ {printf "%s %s %.0f", $2, $3, ($3/$2)*100}\')"',
     'if [ -z "$MEM" ] && [ -r /proc/meminfo ]; then MEM="$(awk \'/MemTotal:/ {t=$2} /MemAvailable:/ {a=$2} END {if (t > 0) {u=(t-a)/1024; printf "%d %d %.0f", t/1024, u, ((t-a)/t)*100}}\' /proc/meminfo)"; fi',
     'DISK="$(df -h "$DISK_PATH" 2>/dev/null | awk \'NR==2 {printf "%s %s %s", $2, $3, $5}\')"',
+    'sum_disk_bytes() { r=0; w=0; for path in /sys/block/*/stat; do dev="${path%/stat}"; dev="${dev##*/}"; case "$dev" in loop*|ram*|sr*|fd*|dm-*|md*) continue ;; esac; read -r _ _ sectors_read _ _ _ _ sectors_written _ _ _ < "$path" || continue; r=$((r + sectors_read * 512)); w=$((w + sectors_written * 512)); done; printf "%s %s" "${r:-0}" "${w:-0}"; }',
+    'set -- $(sum_disk_bytes); IOR1="$1"; IOW1="$2"',
+    'sleep 1',
+    'set -- $(sum_disk_bytes); IOR2="$1"; IOW2="$2"',
+    'IOR=$((IOR2-IOR1))',
+    'IOW=$((IOW2-IOW1))',
+    'if [ "$IOR" -lt 0 ]; then IOR=0; fi',
+    'if [ "$IOW" -lt 0 ]; then IOW=0; fi',
     'RX="$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)"',
     'TX="$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)"',
     'printf "iface=%s\\n" "$IFACE"',
@@ -138,6 +146,10 @@ function buildProbeCommand(config) {
     'printf "disk=%s\\n" "$DISK"',
     'printf "rx=%s\\n" "$RX"',
     'printf "tx=%s\\n" "$TX"',
+    'printf "io_r=%s\\n" "$IOR"',
+    'printf "io_w=%s\\n" "$IOW"',
+    'printf "io_rt=%s\\n" "$IOR2"',
+    'printf "io_wt=%s\\n" "$IOW2"',
   ].join('; ');
 }
 
@@ -170,6 +182,10 @@ function normalizeProbe(probe) {
     diskText: disk,
     rxBytes: parseInteger(probe.rx, 0),
     txBytes: parseInteger(probe.tx, 0),
+    ioReadBytes: parseInteger(probe.io_r, 0),
+    ioWriteBytes: parseInteger(probe.io_w, 0),
+    ioReadTotalBytes: parseInteger(probe.io_rt, 0),
+    ioWriteTotalBytes: parseInteger(probe.io_wt, 0),
   };
 }
 
@@ -248,6 +264,12 @@ function buildViewModel(config, metrics, traffic) {
     uptimeDays,
     uptimeBadge: formatUptimeBadge(metrics.uptime),
     uptimeCompact: compactUptime(metrics.uptime),
+    inboundTotal: formatBytes(metrics.rxBytes),
+    outboundTotal: formatBytes(metrics.txBytes),
+    ioReadSpeed: formatBytesPerSecond(metrics.ioReadBytes),
+    ioWriteSpeed: formatBytesPerSecond(metrics.ioWriteBytes),
+    ioReadTotal: formatBytes(metrics.ioReadTotalBytes),
+    ioWriteTotal: formatBytes(metrics.ioWriteTotalBytes),
     refreshedAt: new Date().toISOString(),
   };
 }
@@ -300,8 +322,8 @@ function renderMediumWidget(view) {
             type: 'stack',
             direction: 'row',
             children: [
-              mediumTrafficBox('Net', view.outbound, '0 B', view.inbound, '0 B'),
-              mediumTrafficBox('I/O', '0 B/s', '0 B', '0 B/s', '0 B'),
+              mediumTrafficBox('Net', view.outbound, view.outboundTotal, view.inbound, view.inboundTotal),
+              mediumTrafficBox('I/O', view.ioWriteSpeed, view.ioWriteTotal, view.ioReadSpeed, view.ioReadTotal),
             ],
           },
         ],
@@ -350,6 +372,12 @@ function renderStaticDebugWidget(title, family) {
     diskPrimary: '12G/40G',
     diskSecondary: '30%',
     uptimeCompact: '1d 2h',
+    inboundTotal: '5.4G',
+    outboundTotal: '2.1G',
+    ioReadSpeed: '32 KB/s',
+    ioWriteSpeed: '12 KB/s',
+    ioReadTotal: '8.7G',
+    ioWriteTotal: '4.2G',
     refreshedAt: new Date().toISOString(),
   };
 
@@ -954,6 +982,24 @@ function formatBytesPerSecond(value) {
   }
 
   const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
+  let index = 0;
+  let current = value;
+
+  while (current >= 1024 && index < units.length - 1) {
+    current /= 1024;
+    index += 1;
+  }
+
+  const precision = current >= 100 ? 0 : current >= 10 ? 1 : 2;
+  return `${current.toFixed(precision)} ${units[index]}`;
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0 B';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let index = 0;
   let current = value;
 
