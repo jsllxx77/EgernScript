@@ -192,6 +192,11 @@ function updateTrafficRate(ctx, config, metrics) {
 }
 
 function buildViewModel(config, metrics, traffic) {
+  const memoryPrimary = usagePrimary(metrics.memoryText);
+  const memorySecondary = usageSecondary(metrics.memoryText);
+  const diskPrimary = usagePrimary(metrics.diskText);
+  const diskSecondary = usageSecondary(metrics.diskText);
+
   return {
     title: config.title,
     status: '在线',
@@ -203,12 +208,19 @@ function buildViewModel(config, metrics, traffic) {
     disk: metrics.diskText,
     inbound: traffic.inbound,
     outbound: traffic.outbound,
+    inboundCompact: compactRate(traffic.inbound),
+    outboundCompact: compactRate(traffic.outbound),
     trafficLine: `↓ ${traffic.inbound}    ↑ ${traffic.outbound}`,
     memoryLine: `内存 ${metrics.memoryText}`,
     loadLine: `负载 ${metrics.load}`,
     diskLine: `磁盘 ${metrics.diskText}`,
     uptimeLine: `运行 ${metrics.uptime}`,
     ifaceLine: `网卡 ${metrics.iface}`,
+    memoryPrimary,
+    memorySecondary,
+    diskPrimary,
+    diskSecondary,
+    uptimeCompact: compactUptime(metrics.uptime),
     refreshedAt: new Date().toISOString(),
   };
 }
@@ -216,6 +228,9 @@ function buildViewModel(config, metrics, traffic) {
 function renderWidget(view, family) {
   if (family === 'systemSmall') {
     return renderSmallWidget(view);
+  }
+  if (family === 'systemLarge' || family === 'systemExtraLarge') {
+    return renderLargeWidget(view);
   }
   if (family === 'accessoryInline') {
     return renderAccessoryInline(view);
@@ -226,10 +241,48 @@ function renderWidget(view, family) {
   if (family === 'accessoryRectangular') {
     return renderAccessoryRectangular(view);
   }
-  return renderDefaultWidget(view);
+  return renderMediumWidget(view);
 }
 
-function renderDefaultWidget(view) {
+function renderMediumWidget(view) {
+  return {
+    type: 'widget',
+    backgroundColor: { light: '#F2F2F7', dark: '#1C1C1E' },
+    padding: 12,
+    gap: 8,
+    children: [
+      renderMediumHeader(view),
+      {
+        type: 'stack',
+        direction: 'column',
+        gap: 8,
+        children: [
+          {
+            type: 'stack',
+            direction: 'row',
+            gap: 8,
+            children: [
+              compactMetricCard('流量', `↓${view.inboundCompact}`, `↑${view.outboundCompact}`, 'sf-symbol:arrow.left.arrow.right.circle'),
+              compactMetricCard('内存', view.memoryPrimary, view.memorySecondary, 'sf-symbol:memorychip'),
+            ],
+          },
+          {
+            type: 'stack',
+            direction: 'row',
+            gap: 8,
+            children: [
+              compactMetricCard('负载', view.load, '1 / 5 / 15', 'sf-symbol:speedometer'),
+              compactMetricCard('磁盘', view.diskPrimary, view.diskSecondary, 'sf-symbol:internaldrive'),
+            ],
+          },
+        ],
+      },
+      renderMediumFooter(view),
+    ],
+  };
+}
+
+function renderLargeWidget(view) {
   return {
     type: 'widget',
     backgroundColor: { light: '#F2F2F7', dark: '#1C1C1E' },
@@ -396,6 +449,24 @@ function renderHeader(view) {
   };
 }
 
+function renderMediumHeader(view) {
+  return {
+    type: 'stack',
+    direction: 'row',
+    alignItems: 'center',
+    gap: 8,
+    children: [
+      symbolNode('sf-symbol:server.rack', colors.icon, 14),
+      textNode(view.title, 'subheadline', colors.primary, 'semibold', {
+        maxLines: 1,
+        minScale: 0.7,
+      }),
+      { type: 'spacer' },
+      badgeNode(view.status, view.statusColor),
+    ],
+  };
+}
+
 function renderHeroPanel(view) {
   return panelNode(
     [
@@ -482,6 +553,36 @@ function renderFooter(view, color) {
   };
 }
 
+function renderMediumFooter(view) {
+  return {
+    type: 'stack',
+    direction: 'row',
+    alignItems: 'center',
+    gap: 6,
+    children: [
+      symbolNode('sf-symbol:timer', colors.secondary, 10),
+      textNode(view.uptimeCompact, 'caption2', colors.secondary, undefined, {
+        maxLines: 1,
+        minScale: 0.65,
+      }),
+      { type: 'spacer' },
+      symbolNode('sf-symbol:cable.connector', colors.secondary, 10),
+      textNode(view.iface, 'caption2', colors.secondary, undefined, {
+        maxLines: 1,
+        minScale: 0.65,
+      }),
+      { type: 'spacer' },
+      {
+        type: 'date',
+        date: view.refreshedAt,
+        format: 'relative',
+        font: { size: 'caption2' },
+        textColor: colors.secondary,
+      },
+    ],
+  };
+}
+
 function renderErrorHeader(title) {
   return {
     type: 'stack',
@@ -509,6 +610,44 @@ function panelNode(children, tone) {
     borderWidth: 1,
     borderColor: style.borderColor,
     children,
+  };
+}
+
+function compactMetricCard(label, primary, secondary, symbol) {
+  return {
+    type: 'stack',
+    direction: 'column',
+    gap: 3,
+    flex: 1,
+    padding: 8,
+    height: 58,
+    backgroundColor: panelStyles.panelSoft.backgroundColor,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: panelStyles.panelSoft.borderColor,
+    children: [
+      {
+        type: 'stack',
+        direction: 'row',
+        alignItems: 'center',
+        gap: 5,
+        children: [
+          symbolNode(symbol, colors.secondary, 11),
+          textNode(label, 'caption2', colors.tertiary, 'semibold', {
+            maxLines: 1,
+            minScale: 0.8,
+          }),
+        ],
+      },
+      textNode(primary, 'caption1', colors.primary, 'semibold', {
+        maxLines: 1,
+        minScale: 0.55,
+      }),
+      textNode(secondary, 'caption2', colors.secondary, undefined, {
+        maxLines: 1,
+        minScale: 0.7,
+      }),
+    ],
   };
 }
 
@@ -700,6 +839,51 @@ function formatBytesPerSecond(value) {
 
   const precision = current >= 100 ? 0 : current >= 10 ? 1 : 2;
   return `${current.toFixed(precision)} ${units[index]}`;
+}
+
+function compactRate(value) {
+  if (!value || value === '--') {
+    return '--';
+  }
+
+  return String(value)
+    .replace(/\s+/g, '')
+    .replace('KB/s', 'K/s')
+    .replace('MB/s', 'M/s')
+    .replace('GB/s', 'G/s')
+    .replace('TB/s', 'T/s')
+    .replace('B/s', 'B/s');
+}
+
+function usagePrimary(value) {
+  const match = String(value || '').match(/^(.+?) \((.+)\)$/);
+  if (match) {
+    return match[1];
+  }
+  return value || '--';
+}
+
+function usageSecondary(value) {
+  const match = String(value || '').match(/^(.+?) \((.+)\)$/);
+  if (match) {
+    return match[2];
+  }
+  return '--';
+}
+
+function compactUptime(value) {
+  if (!value || value === '--') {
+    return '--';
+  }
+
+  return String(value)
+    .replace(/, /g, ' ')
+    .replace(/\bdays?\b/g, 'd')
+    .replace(/\bhours?\b/g, 'h')
+    .replace(/\bminutes?\b/g, 'm')
+    .replace(/\bseconds?\b/g, 's')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function readExecText(value) {
