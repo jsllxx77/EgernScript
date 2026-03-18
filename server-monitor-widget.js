@@ -246,6 +246,7 @@ function buildViewModel(config, metrics, traffic) {
     diskPercent,
     cpuPercent,
     uptimeDays,
+    uptimeBadge: formatUptimeBadge(metrics.uptime),
     uptimeCompact: compactUptime(metrics.uptime),
     refreshedAt: new Date().toISOString(),
   };
@@ -299,24 +300,12 @@ function renderMediumWidget(view) {
             type: 'stack',
             direction: 'row',
             children: [
-              mediumLoadCell('Load 1', loadPart(view.load, 0), view.cpuPercent),
-              mediumLoadCell('Load 5', loadPart(view.load, 1), view.cpuPercent),
-              mediumLoadCell('Load 15', loadPart(view.load, 2), view.cpuPercent),
-            ],
-          },
-          mediumDivider(),
-          {
-            type: 'stack',
-            direction: 'row',
-            children: [
               mediumTrafficBox('Net', view.outbound, '0 B', view.inbound, '0 B'),
               mediumTrafficBox('I/O', '0 B/s', '0 B', '0 B/s', '0 B'),
             ],
           },
-          mediumStatusStrip(view),
         ],
       },
-      renderMediumFooterSafe(view),
     ],
   };
 }
@@ -558,7 +547,7 @@ function renderMediumHeaderSafe(view) {
         minScale: 0.7,
       }),
       { type: 'spacer' },
-      textNode(`${view.uptimeDays} days`, 'caption1', SAFE_TEXT_SUB, 'bold'),
+      textNode(view.uptimeBadge, 'caption1', SAFE_TEXT_SUB, 'bold'),
       textNode(' ●', 'caption1', SAFE_STATUS_OK, 'bold'),
     ],
   };
@@ -646,26 +635,6 @@ function renderFooter(view, color) {
         font: { size: 'caption2' },
         textColor: color || colors.secondary,
       },
-    ],
-  };
-}
-
-function renderMediumFooterSafe(view) {
-  return {
-    type: 'stack',
-    direction: 'row',
-    children: [
-      textNode(view.uptimeCompact, 'caption2', SAFE_TEXT_SUB, undefined, {
-        maxLines: 1,
-        minScale: 0.65,
-      }),
-      { type: 'spacer' },
-      textNode(view.iface, 'caption2', SAFE_TEXT_SUB, undefined, {
-        maxLines: 1,
-        minScale: 0.65,
-      }),
-      { type: 'spacer' },
-      textNode('在线', 'caption2', SAFE_STATUS_OK, 'bold'),
     ],
   };
 }
@@ -778,37 +747,20 @@ function mediumPercentCell(label, percent) {
   };
 }
 
-function mediumLoadCell(label, value, percent) {
-  return {
-    type: 'stack',
-    direction: 'column',
-    alignItems: 'center',
-    flex: 1,
-    gap: 2,
-    children: [
-      textNode(label, 'caption2', SAFE_TEXT_SUB, 'bold'),
-      textNode(value, 'caption1', percentColor(percent), 'heavy', {
-        maxLines: 1,
-        minScale: 0.7,
-      }),
-    ],
-  };
-}
-
 function mediumTrafficBox(title, upSpeed, upTotal, downSpeed, downTotal) {
   return {
     type: 'stack',
     direction: 'column',
     flex: 1,
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
     children: [
       textNode(title, 'caption1', SAFE_TEXT_SUB, 'bold'),
-      textNode(`↑ ${upSpeed} · ${upTotal}`, 'caption2', SAFE_TEXT_MAIN, 'bold', {
+      textNode(`↑ ${upSpeed} · ${upTotal}`, 'caption1', SAFE_TEXT_MAIN, 'bold', {
         maxLines: 1,
         minScale: 0.55,
       }),
-      textNode(`↓ ${downSpeed} · ${downTotal}`, 'caption2', SAFE_TEXT_MAIN, 'bold', {
+      textNode(`↓ ${downSpeed} · ${downTotal}`, 'caption1', SAFE_TEXT_MAIN, 'bold', {
         maxLines: 1,
         minScale: 0.55,
       }),
@@ -821,24 +773,6 @@ function mediumDivider() {
     type: 'stack',
     height: 1,
     backgroundColor: '#2C2C2E',
-  };
-}
-
-function mediumStatusStrip(view) {
-  return {
-    type: 'stack',
-    direction: 'row',
-    gap: 6,
-    children: [
-      textNode('C', 'caption1', '#1C1C1E', 'heavy'),
-      textNode('P', 'caption1', '#1C1C1E', 'heavy'),
-      textNode('U', 'caption1', '#1C1C1E', 'heavy'),
-      textNode(' ■', 'caption1', SAFE_STATUS_OK, 'heavy'),
-      textNode('□□□□□□□□□□□□□□□□□□□□', 'caption1', '#3A3A3C', 'heavy', {
-        maxLines: 1,
-        minScale: 0.6,
-      }),
-    ],
   };
 }
 
@@ -1105,11 +1039,25 @@ function uptimeToDays(value) {
   if (!value || value === '--') {
     return 0;
   }
-  const match = String(value).match(/(\d+)d/);
-  if (match) {
-    return Number.parseInt(match[1], 10);
+  const source = String(value).trim();
+  const shortMatch = source.match(/(\d+)\s*d/i);
+  if (shortMatch) {
+    return Number.parseInt(shortMatch[1], 10);
+  }
+  const wordMatch = source.match(/(\d+)\s*days?/i);
+  if (wordMatch) {
+    return Number.parseInt(wordMatch[1], 10);
   }
   return 0;
+}
+
+function formatUptimeBadge(value) {
+  const days = uptimeToDays(value);
+  if (days > 0) {
+    return `${days}d`;
+  }
+  const compact = compactUptime(value);
+  return compact === '--' ? '<1d' : compact;
 }
 
 function percentColor(percent) {
