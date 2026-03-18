@@ -6,6 +6,9 @@ const STORAGE_PREFIX = 'server-monitor-widget';
 
 export default async function (ctx) {
   const env = ctx.env || {};
+  if (isMinimalDebugEnabled(env)) {
+    return renderMinimalDebugWidget(firstNonEmpty(env.TITLE, env.title) || DEFAULT_TITLE);
+  }
   if (isStaticDebugEnabled(env)) {
     return renderStaticDebugWidget(firstNonEmpty(env.TITLE, env.title) || DEFAULT_TITLE, ctx.widgetFamily);
   }
@@ -40,6 +43,11 @@ export default async function (ctx) {
       } catch (_) {}
     }
   }
+}
+
+function isMinimalDebugEnabled(env) {
+  const value = firstNonEmpty(env.DEBUG_MINIMAL, env.debug_minimal, env.debugMinimal).toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
 }
 
 function isStaticDebugEnabled(env) {
@@ -336,6 +344,35 @@ function renderStaticDebugWidget(title, family) {
   };
 
   return renderWidget(debugView, family);
+}
+
+function renderMinimalDebugWidget(title) {
+  return {
+    type: 'widget',
+    backgroundColor: '#1C1C1E',
+    padding: 16,
+    gap: 8,
+    children: [
+      {
+        type: 'text',
+        text: title,
+        font: { size: 'headline', weight: 'semibold' },
+        textColor: '#FFFFFF',
+      },
+      {
+        type: 'text',
+        text: 'DEBUG_MINIMAL',
+        font: { size: 'body', weight: 'semibold' },
+        textColor: '#7DD3FC',
+      },
+      {
+        type: 'text',
+        text: '如果桌面能显示这三行，说明黑屏不是基础 widget 渲染问题。',
+        font: { size: 'caption1' },
+        textColor: '#C7C7CC',
+      },
+    ],
+  };
 }
 
 function renderSmallWidget(view) {
