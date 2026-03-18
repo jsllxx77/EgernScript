@@ -307,7 +307,7 @@ function renderAccessoryRectangular(view) {
         type: 'stack',
         direction: 'row',
         children: [
-          textNode(view.title, 'caption', '#FFFFFF', 'bold'),
+          textNode(view.title, 'caption1', '#FFFFFF', 'bold'),
           { type: 'spacer' },
           textNode(view.status, 'caption2', view.statusColor, 'semibold'),
         ],
@@ -356,7 +356,7 @@ function renderErrorWidget(title, message, family) {
           badgeNode('ERR', '#EF4444'),
         ],
       },
-      textNode(message, 'caption', '#FECACA'),
+      textNode(message, 'caption1', '#FECACA'),
       {
         type: 'date',
         date: view.refreshedAt,
@@ -373,9 +373,9 @@ function metricRow(label, value) {
     type: 'stack',
     direction: 'row',
     children: [
-      textNode(label, 'caption', '#94A3B8', 'semibold'),
+      textNode(label, 'caption1', '#94A3B8', 'semibold'),
       { type: 'spacer' },
-      textNode(value, 'caption', '#FFFFFF', 'semibold'),
+      textNode(value, 'caption1', '#FFFFFF', 'semibold'),
     ],
   };
 }
