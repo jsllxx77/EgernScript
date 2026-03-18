@@ -194,8 +194,8 @@ function updateTrafficRate(ctx, config, metrics) {
 function buildViewModel(config, metrics, traffic) {
   return {
     title: config.title,
-    status: 'OK',
-    statusColor: '#22C55E',
+    status: '在线',
+    statusColor: '#63D2A1',
     iface: metrics.iface,
     uptime: metrics.uptime,
     load: metrics.load,
@@ -203,11 +203,20 @@ function buildViewModel(config, metrics, traffic) {
     disk: metrics.diskText,
     inbound: traffic.inbound,
     outbound: traffic.outbound,
+    trafficLine: `↓ ${traffic.inbound}    ↑ ${traffic.outbound}`,
+    memoryLine: `内存 ${metrics.memoryText}`,
+    loadLine: `负载 ${metrics.load}`,
+    diskLine: `磁盘 ${metrics.diskText}`,
+    uptimeLine: `运行 ${metrics.uptime}`,
+    ifaceLine: `网卡 ${metrics.iface}`,
     refreshedAt: new Date().toISOString(),
   };
 }
 
 function renderWidget(view, family) {
+  if (family === 'systemSmall') {
+    return renderSmallWidget(view);
+  }
   if (family === 'accessoryInline') {
     return renderAccessoryInline(view);
   }
@@ -223,49 +232,42 @@ function renderWidget(view, family) {
 function renderDefaultWidget(view) {
   return {
     type: 'widget',
-    backgroundColor: { light: '#0F172A', dark: '#020617' },
+    backgroundColor: { light: '#F2F2F7', dark: '#1C1C1E' },
     padding: 14,
     gap: 10,
     children: [
-      {
-        type: 'stack',
-        direction: 'row',
-        children: [
-          textNode(view.title, 'headline', '#FFFFFF', 'bold'),
-          { type: 'spacer' },
-          badgeNode(view.status, view.statusColor),
-        ],
-      },
-      {
-        type: 'stack',
-        direction: 'column',
-        gap: 6,
-        children: [
-          metricRow('STATUS', 'online'),
-          metricRow('UPTIME', view.uptime),
-          metricRow('CPU 1/5/15', view.load),
-          metricRow('MEM', view.memory),
-          metricRow('DISK', view.disk),
-          metricRow('NET IN', view.inbound),
-          metricRow('NET OUT', view.outbound),
-        ],
-      },
-      { type: 'spacer' },
-      {
-        type: 'stack',
-        direction: 'row',
-        children: [
-          textNode(`IF ${view.iface}`, 'caption2', '#94A3B8'),
-          { type: 'spacer' },
-          {
-            type: 'date',
-            date: view.refreshedAt,
-            format: 'relative',
-            font: { size: 'caption2' },
-            textColor: '#94A3B8',
-          },
-        ],
-      },
+      renderHeader(view),
+      renderHeroPanel(view),
+      renderInfoPanels(view),
+      renderFooter(view),
+    ],
+  };
+}
+
+function renderSmallWidget(view) {
+  return {
+    type: 'widget',
+    backgroundColor: { light: '#F2F2F7', dark: '#1C1C1E' },
+    padding: 12,
+    gap: 8,
+    children: [
+      renderHeader(view),
+      panelNode([
+        headerLabel('实时流量'),
+        textNode(view.trafficLine, 'subheadline', colors.primary, 'semibold', {
+          maxLines: 2,
+          minScale: 0.7,
+        }),
+        textNode(view.memoryLine, 'caption1', colors.secondary, undefined, {
+          maxLines: 1,
+          minScale: 0.8,
+        }),
+      ], 'panelStrong'),
+      panelNode([
+        infoLine('负载', view.load, 'sf-symbol:speedometer'),
+        infoLine('磁盘', view.disk, 'sf-symbol:internaldrive'),
+      ], 'panelSoft'),
+      renderFooter(view),
     ],
   };
 }
@@ -275,9 +277,9 @@ function renderAccessoryInline(view) {
     type: 'widget',
     children: [
       textNode(
-        `${view.title} ${view.status} ${view.inbound} in ${view.outbound} out`,
+        `${view.title} ${view.status} ↓${view.inbound} ↑${view.outbound}`,
         'caption2',
-        '#FFFFFF',
+        colors.primary,
         'semibold'
       ),
     ],
@@ -288,11 +290,11 @@ function renderAccessoryCircular(view) {
   return {
     type: 'widget',
     padding: 8,
-    gap: 2,
+    gap: 3,
     children: [
-      textNode('NET', 'caption2', '#94A3B8', 'semibold'),
-      textNode(view.inbound, 'caption2', '#FFFFFF', 'bold'),
-      textNode(view.outbound, 'caption2', '#CBD5E1'),
+      symbolNode('sf-symbol:arrow.down.forward.circle.fill', view.statusColor, 14),
+      textNode(view.inbound, 'caption2', colors.primary, 'bold'),
+      textNode(view.outbound, 'caption2', colors.secondary),
     ],
   };
 }
@@ -306,14 +308,17 @@ function renderAccessoryRectangular(view) {
       {
         type: 'stack',
         direction: 'row',
+        alignItems: 'center',
+        gap: 6,
         children: [
-          textNode(view.title, 'caption1', '#FFFFFF', 'bold'),
+          symbolNode('sf-symbol:server.rack', colors.secondary, 12),
+          textNode(view.title, 'caption1', colors.primary, 'bold', { maxLines: 1, minScale: 0.8 }),
           { type: 'spacer' },
           textNode(view.status, 'caption2', view.statusColor, 'semibold'),
         ],
       },
-      textNode(`Up ${view.uptime}`, 'caption2', '#CBD5E1'),
-      textNode(`In ${view.inbound} / Out ${view.outbound}`, 'caption2', '#CBD5E1'),
+      textNode(view.trafficLine, 'caption2', colors.primary, 'semibold', { maxLines: 1, minScale: 0.7 }),
+      textNode(view.uptimeLine, 'caption2', colors.secondary, undefined, { maxLines: 1, minScale: 0.8 }),
     ],
   };
 }
@@ -343,53 +348,224 @@ function renderErrorWidget(title, message, family) {
 
   return {
     type: 'widget',
-    backgroundColor: { light: '#3F1D1D', dark: '#2A0D0D' },
+    backgroundColor: { light: '#F2F2F7', dark: '#1C1C1E' },
     padding: 14,
     gap: 8,
     children: [
+      renderErrorHeader(title),
+      panelNode(
+        [
+          textNode(message, 'caption1', '#FFB4B4', undefined, {
+            maxLines: 3,
+            minScale: 0.75,
+          }),
+        ],
+        'panelError'
+      ),
+      renderFooter(view, '#FFB4B4'),
+    ],
+  };
+}
+
+function renderHeader(view) {
+  return {
+    type: 'stack',
+    direction: 'row',
+    alignItems: 'center',
+    gap: 8,
+    children: [
+      symbolNode('sf-symbol:server.rack', colors.icon, 15),
+      {
+        type: 'stack',
+        direction: 'column',
+        gap: 1,
+        children: [
+          textNode(view.title, 'headline', colors.primary, 'semibold', {
+            maxLines: 1,
+            minScale: 0.75,
+          }),
+          textNode(view.ifaceLine, 'caption2', colors.secondary, undefined, {
+            maxLines: 1,
+            minScale: 0.8,
+          }),
+        ],
+      },
+      { type: 'spacer' },
+      badgeNode(view.status, view.statusColor),
+    ],
+  };
+}
+
+function renderHeroPanel(view) {
+  return panelNode(
+    [
+      headerLabel('实时流量'),
       {
         type: 'stack',
         direction: 'row',
+        alignItems: 'center',
+        gap: 8,
         children: [
-          textNode(title, 'headline', '#FFFFFF', 'bold'),
+          symbolNode('sf-symbol:arrow.down.forward.circle.fill', '#7DD3FC', 16),
+          textNode(view.inbound, 'title3', colors.primary, 'semibold', {
+            maxLines: 1,
+            minScale: 0.65,
+          }),
           { type: 'spacer' },
-          badgeNode('ERR', '#EF4444'),
+          symbolNode('sf-symbol:arrow.up.forward.circle.fill', '#A7F3D0', 16),
+          textNode(view.outbound, 'title3', colors.primary, 'semibold', {
+            maxLines: 1,
+            minScale: 0.65,
+          }),
         ],
       },
-      textNode(message, 'caption1', '#FECACA'),
+      {
+        type: 'stack',
+        direction: 'row',
+        alignItems: 'center',
+        gap: 6,
+        children: [
+          symbolNode('sf-symbol:memorychip', colors.secondary, 13),
+          textNode(view.memoryLine, 'caption1', colors.secondary, undefined, {
+            maxLines: 1,
+            minScale: 0.8,
+          }),
+        ],
+      },
+    ],
+    'panelStrong'
+  );
+}
+
+function renderInfoPanels(view) {
+  return {
+    type: 'stack',
+    direction: 'column',
+    gap: 8,
+    children: [
+      panelNode(
+        [
+          headerLabel('系统概况'),
+          infoLine('负载', view.load, 'sf-symbol:speedometer'),
+          infoLine('运行', view.uptime, 'sf-symbol:timer'),
+        ],
+        'panelSoft'
+      ),
+      panelNode(
+        [
+          headerLabel('资源'),
+          infoLine('磁盘', view.disk, 'sf-symbol:internaldrive'),
+          infoLine('网卡', view.iface, 'sf-symbol:cable.connector'),
+        ],
+        'panelMuted'
+      ),
+    ],
+  };
+}
+
+function renderFooter(view, color) {
+  return {
+    type: 'stack',
+    direction: 'row',
+    alignItems: 'center',
+    gap: 6,
+    children: [
+      symbolNode('sf-symbol:clock', color || colors.secondary, 11),
       {
         type: 'date',
         date: view.refreshedAt,
         format: 'relative',
         font: { size: 'caption2' },
-        textColor: '#FCA5A5',
+        textColor: color || colors.secondary,
       },
     ],
   };
 }
 
-function metricRow(label, value) {
+function renderErrorHeader(title) {
   return {
     type: 'stack',
     direction: 'row',
+    alignItems: 'center',
+    gap: 8,
     children: [
-      textNode(label, 'caption1', '#94A3B8', 'semibold'),
+      symbolNode('sf-symbol:exclamationmark.triangle.fill', '#FF6B6B', 15),
+      textNode(title, 'headline', colors.primary, 'semibold'),
       { type: 'spacer' },
-      textNode(value, 'caption1', '#FFFFFF', 'semibold'),
+      badgeNode('异常', '#FF6B6B'),
+    ],
+  };
+}
+
+function panelNode(children, tone) {
+  const style = panelStyles[tone];
+  return {
+    type: 'stack',
+    direction: 'column',
+    gap: style.gap,
+    padding: style.padding,
+    backgroundColor: style.backgroundColor,
+    borderRadius: style.borderRadius,
+    borderWidth: 1,
+    borderColor: style.borderColor,
+    children,
+  };
+}
+
+function headerLabel(text) {
+  return textNode(text, 'caption2', colors.tertiary, 'semibold', {
+    maxLines: 1,
+    minScale: 0.8,
+  });
+}
+
+function infoLine(label, value, symbol) {
+  return {
+    type: 'stack',
+    direction: 'row',
+    alignItems: 'center',
+    gap: 6,
+    children: [
+      symbolNode(symbol, colors.secondary, 12),
+      textNode(label, 'caption1', colors.secondary),
+      { type: 'spacer' },
+      textNode(value, 'caption1', colors.primary, 'semibold', {
+        maxLines: 1,
+        minScale: 0.65,
+      }),
     ],
   };
 }
 
 function badgeNode(text, color) {
   return {
-    type: 'text',
-    text,
-    font: { size: 'caption2', weight: 'bold' },
-    textColor: color,
+    type: 'stack',
+    direction: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: [4, 8, 4, 8],
+    backgroundColor: { light: '#FFFFFF', dark: '#2C2C2E' },
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: { light: '#E5E7EB', dark: '#3A3A3C' },
+    children: [
+      symbolNode('sf-symbol:dot.radiowaves.left.and.right', color, 10),
+      textNode(text, 'caption2', color, 'semibold'),
+    ],
   };
 }
 
-function textNode(text, size, color, weight) {
+function symbolNode(src, color, size) {
+  return {
+    type: 'image',
+    src,
+    color,
+    width: size,
+    height: size,
+  };
+}
+
+function textNode(text, size, color, weight, extra) {
   const node = {
     type: 'text',
     text,
@@ -399,6 +575,10 @@ function textNode(text, size, color, weight) {
 
   if (weight) {
     node.font.weight = weight;
+  }
+
+  if (extra) {
+    Object.assign(node, extra);
   }
 
   return node;
@@ -556,3 +736,41 @@ function firstNonEmpty(...values) {
   }
   return '';
 }
+
+const colors = {
+  primary: { light: '#111827', dark: '#F5F5F7' },
+  secondary: { light: '#6B7280', dark: '#A1A1AA' },
+  tertiary: { light: '#9CA3AF', dark: '#8E8E93' },
+  icon: { light: '#6B7280', dark: '#C7C7CC' },
+};
+
+const panelStyles = {
+  panelStrong: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 20,
+    backgroundColor: { light: '#FFFFFF', dark: '#2C2C2E' },
+    borderColor: { light: '#E5E7EB', dark: '#3A3A3C' },
+  },
+  panelSoft: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 18,
+    backgroundColor: { light: '#FFFFFF', dark: '#2A2A2D' },
+    borderColor: { light: '#E5E7EB', dark: '#3A3A3C' },
+  },
+  panelMuted: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 18,
+    backgroundColor: { light: '#FFFFFF', dark: '#3A3A3C' },
+    borderColor: { light: '#E5E7EB', dark: '#4A4A4F' },
+  },
+  panelError: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 18,
+    backgroundColor: { light: '#FFF1F2', dark: '#3A1F23' },
+    borderColor: { light: '#FECDD3', dark: '#5B2B32' },
+  },
+};
