@@ -214,6 +214,10 @@ function buildViewModel(config, metrics, traffic) {
   const memorySecondary = usageSecondary(metrics.memoryText);
   const diskPrimary = usagePrimary(metrics.diskText);
   const diskSecondary = usageSecondary(metrics.diskText);
+  const memoryPercent = extractPercent(metrics.memoryText);
+  const diskPercent = extractPercent(metrics.diskText);
+  const cpuPercent = loadToPercent(metrics.load);
+  const uptimeDays = uptimeToDays(metrics.uptime);
 
   return {
     title: config.title,
@@ -236,8 +240,12 @@ function buildViewModel(config, metrics, traffic) {
     ifaceLine: `网卡 ${metrics.iface}`,
     memoryPrimary,
     memorySecondary,
+    memoryPercent,
     diskPrimary,
     diskSecondary,
+    diskPercent,
+    cpuPercent,
+    uptimeDays,
     uptimeCompact: compactUptime(metrics.uptime),
     refreshedAt: new Date().toISOString(),
   };
@@ -267,33 +275,45 @@ function renderMediumWidget(view) {
     type: 'widget',
     url: 'egern://',
     backgroundColor: { light: '#1C1C1E', dark: '#1C1C1E' },
-    padding: 12,
-    gap: 10,
+    padding: 14,
+    gap: 12,
     children: [
       renderMediumHeaderSafe(view),
       {
         type: 'stack',
         direction: 'column',
-        gap: 10,
+        gap: 12,
         children: [
           {
             type: 'stack',
             direction: 'row',
-            gap: 8,
             children: [
-              mediumTextMetricCard('流量', `↓ ${view.inboundCompact}`, `↑ ${view.outboundCompact}`),
-              mediumTextMetricCard('内存', view.memoryPrimary, view.memorySecondary),
+              mediumPercentCell('CPU', view.cpuPercent),
+              mediumPercentCell('Mem', view.memoryPercent),
+              mediumPercentCell('Swap', 0),
+              mediumPercentCell('Disk', view.diskPercent),
             ],
           },
+          mediumDivider(),
           {
             type: 'stack',
             direction: 'row',
-            gap: 8,
             children: [
-              mediumTextMetricCard('负载', view.load, '1 / 5 / 15'),
-              mediumTextMetricCard('磁盘', view.diskPrimary, view.diskSecondary),
+              mediumLoadCell('Load 1', loadPart(view.load, 0), view.cpuPercent),
+              mediumLoadCell('Load 5', loadPart(view.load, 1), view.cpuPercent),
+              mediumLoadCell('Load 15', loadPart(view.load, 2), view.cpuPercent),
             ],
           },
+          mediumDivider(),
+          {
+            type: 'stack',
+            direction: 'row',
+            children: [
+              mediumTrafficBox('Net', view.outbound, '0 B', view.inbound, '0 B'),
+              mediumTrafficBox('I/O', '0 B/s', '0 B', '0 B/s', '0 B'),
+            ],
+          },
+          mediumStatusStrip(view),
         ],
       },
       renderMediumFooterSafe(view),
@@ -533,12 +553,13 @@ function renderMediumHeaderSafe(view) {
     type: 'stack',
     direction: 'row',
     children: [
-      textNode(view.title, 'subheadline', SAFE_TEXT_MAIN, 'semibold', {
+      textNode(view.title, 'subheadline', SAFE_TEXT_MAIN, 'heavy', {
         maxLines: 1,
         minScale: 0.7,
       }),
       { type: 'spacer' },
-      textNode(view.status, 'caption1', SAFE_STATUS_OK, 'semibold'),
+      textNode(`${view.uptimeDays} days`, 'caption1', SAFE_TEXT_SUB, 'bold'),
+      textNode(' ●', 'caption1', SAFE_STATUS_OK, 'bold'),
     ],
   };
 }
@@ -644,7 +665,7 @@ function renderMediumFooterSafe(view) {
         minScale: 0.65,
       }),
       { type: 'spacer' },
-      textNode('已刷新', 'caption2', SAFE_TEXT_SUB),
+      textNode('在线', 'caption2', SAFE_STATUS_OK, 'bold'),
     ],
   };
 }
@@ -735,6 +756,87 @@ function mediumTextMetricCard(label, primary, secondary) {
       textNode(secondary, 'caption2', SAFE_TEXT_SUB, undefined, {
         maxLines: 1,
         minScale: 0.65,
+      }),
+    ],
+  };
+}
+
+function mediumPercentCell(label, percent) {
+  return {
+    type: 'stack',
+    direction: 'column',
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+    children: [
+      textNode(`${percent}%`, 'title3', percentColor(percent), 'heavy', {
+        maxLines: 1,
+        minScale: 0.7,
+      }),
+      textNode(label, 'caption1', SAFE_TEXT_SUB, 'bold'),
+    ],
+  };
+}
+
+function mediumLoadCell(label, value, percent) {
+  return {
+    type: 'stack',
+    direction: 'column',
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+    children: [
+      textNode(label, 'caption2', SAFE_TEXT_SUB, 'bold'),
+      textNode(value, 'caption1', percentColor(percent), 'heavy', {
+        maxLines: 1,
+        minScale: 0.7,
+      }),
+    ],
+  };
+}
+
+function mediumTrafficBox(title, upSpeed, upTotal, downSpeed, downTotal) {
+  return {
+    type: 'stack',
+    direction: 'column',
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    children: [
+      textNode(title, 'caption1', SAFE_TEXT_SUB, 'bold'),
+      textNode(`↑ ${upSpeed} · ${upTotal}`, 'caption2', SAFE_TEXT_MAIN, 'bold', {
+        maxLines: 1,
+        minScale: 0.55,
+      }),
+      textNode(`↓ ${downSpeed} · ${downTotal}`, 'caption2', SAFE_TEXT_MAIN, 'bold', {
+        maxLines: 1,
+        minScale: 0.55,
+      }),
+    ],
+  };
+}
+
+function mediumDivider() {
+  return {
+    type: 'stack',
+    height: 1,
+    backgroundColor: '#2C2C2E',
+  };
+}
+
+function mediumStatusStrip(view) {
+  return {
+    type: 'stack',
+    direction: 'row',
+    gap: 6,
+    children: [
+      textNode('C', 'caption1', '#1C1C1E', 'heavy'),
+      textNode('P', 'caption1', '#1C1C1E', 'heavy'),
+      textNode('U', 'caption1', '#1C1C1E', 'heavy'),
+      textNode(' ■', 'caption1', SAFE_STATUS_OK, 'heavy'),
+      textNode('□□□□□□□□□□□□□□□□□□□□', 'caption1', '#3A3A3C', 'heavy', {
+        maxLines: 1,
+        minScale: 0.6,
       }),
     ],
   };
@@ -973,6 +1075,51 @@ function compactUptime(value) {
     .replace(/\bseconds?\b/g, 's')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function extractPercent(value) {
+  const match = String(value || '').match(/\((\d+)%\)$/);
+  if (match) {
+    return Number.parseInt(match[1], 10);
+  }
+  return 0;
+}
+
+function loadPart(value, index) {
+  const parts = String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts[index] || '--';
+}
+
+function loadToPercent(value) {
+  const first = Number.parseFloat(loadPart(value, 0));
+  if (!Number.isFinite(first)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(99, Math.round(first * 100)));
+}
+
+function uptimeToDays(value) {
+  if (!value || value === '--') {
+    return 0;
+  }
+  const match = String(value).match(/(\d+)d/);
+  if (match) {
+    return Number.parseInt(match[1], 10);
+  }
+  return 0;
+}
+
+function percentColor(percent) {
+  if (percent >= 85) {
+    return '#FF3B30';
+  }
+  if (percent >= 60) {
+    return '#FF9500';
+  }
+  return '#34C759';
 }
 
 function readExecText(value) {
