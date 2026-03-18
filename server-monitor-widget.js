@@ -265,23 +265,24 @@ function renderWidget(view, family) {
 function renderMediumWidget(view) {
   return {
     type: 'widget',
-    backgroundColor: { light: '#F2F2F7', dark: '#1C1C1E' },
+    url: 'egern://',
+    backgroundColor: { light: '#1C1C1E', dark: '#1C1C1E' },
     padding: 12,
-    gap: 8,
+    gap: 10,
     children: [
-      renderMediumHeader(view),
+      renderMediumHeaderSafe(view),
       {
         type: 'stack',
         direction: 'column',
-        gap: 8,
+        gap: 10,
         children: [
           {
             type: 'stack',
             direction: 'row',
             gap: 8,
             children: [
-              compactMetricCard('流量', `↓${view.inboundCompact}`, `↑${view.outboundCompact}`, 'sf-symbol:arrow.left.arrow.right.circle'),
-              compactMetricCard('内存', view.memoryPrimary, view.memorySecondary, 'sf-symbol:memorychip'),
+              mediumTextMetricCard('流量', `↓ ${view.inboundCompact}`, `↑ ${view.outboundCompact}`),
+              mediumTextMetricCard('内存', view.memoryPrimary, view.memorySecondary),
             ],
           },
           {
@@ -289,13 +290,13 @@ function renderMediumWidget(view) {
             direction: 'row',
             gap: 8,
             children: [
-              compactMetricCard('负载', view.load, '1 / 5 / 15', 'sf-symbol:speedometer'),
-              compactMetricCard('磁盘', view.diskPrimary, view.diskSecondary, 'sf-symbol:internaldrive'),
+              mediumTextMetricCard('负载', view.load, '1 / 5 / 15'),
+              mediumTextMetricCard('磁盘', view.diskPrimary, view.diskSecondary),
             ],
           },
         ],
       },
-      renderMediumFooter(view),
+      renderMediumFooterSafe(view),
     ],
   };
 }
@@ -527,20 +528,17 @@ function renderHeader(view) {
   };
 }
 
-function renderMediumHeader(view) {
+function renderMediumHeaderSafe(view) {
   return {
     type: 'stack',
     direction: 'row',
-    alignItems: 'center',
-    gap: 8,
     children: [
-      symbolNode('sf-symbol:server.rack', colors.icon, 14),
-      textNode(view.title, 'subheadline', colors.primary, 'semibold', {
+      textNode(view.title, 'subheadline', SAFE_TEXT_MAIN, 'semibold', {
         maxLines: 1,
         minScale: 0.7,
       }),
       { type: 'spacer' },
-      badgeNode(view.status, view.statusColor),
+      textNode(view.status, 'caption1', SAFE_STATUS_OK, 'semibold'),
     ],
   };
 }
@@ -631,32 +629,22 @@ function renderFooter(view, color) {
   };
 }
 
-function renderMediumFooter(view) {
+function renderMediumFooterSafe(view) {
   return {
     type: 'stack',
     direction: 'row',
-    alignItems: 'center',
-    gap: 6,
     children: [
-      symbolNode('sf-symbol:timer', colors.secondary, 10),
-      textNode(view.uptimeCompact, 'caption2', colors.secondary, undefined, {
+      textNode(view.uptimeCompact, 'caption2', SAFE_TEXT_SUB, undefined, {
         maxLines: 1,
         minScale: 0.65,
       }),
       { type: 'spacer' },
-      symbolNode('sf-symbol:cable.connector', colors.secondary, 10),
-      textNode(view.iface, 'caption2', colors.secondary, undefined, {
+      textNode(view.iface, 'caption2', SAFE_TEXT_SUB, undefined, {
         maxLines: 1,
         minScale: 0.65,
       }),
       { type: 'spacer' },
-      {
-        type: 'date',
-        date: view.refreshedAt,
-        format: 'relative',
-        font: { size: 'caption2' },
-        textColor: colors.secondary,
-      },
+      textNode('已刷新', 'caption2', SAFE_TEXT_SUB),
     ],
   };
 }
@@ -724,6 +712,29 @@ function compactMetricCard(label, primary, secondary, symbol) {
       textNode(secondary, 'caption2', colors.secondary, undefined, {
         maxLines: 1,
         minScale: 0.7,
+      }),
+    ],
+  };
+}
+
+function mediumTextMetricCard(label, primary, secondary) {
+  return {
+    type: 'stack',
+    direction: 'column',
+    gap: 2,
+    flex: 1,
+    children: [
+      textNode(label, 'caption2', SAFE_TEXT_SUB, 'semibold', {
+        maxLines: 1,
+        minScale: 0.8,
+      }),
+      textNode(primary, 'caption1', SAFE_TEXT_MAIN, 'semibold', {
+        maxLines: 1,
+        minScale: 0.55,
+      }),
+      textNode(secondary, 'caption2', SAFE_TEXT_SUB, undefined, {
+        maxLines: 1,
+        minScale: 0.65,
       }),
     ],
   };
@@ -1036,3 +1047,7 @@ const panelStyles = {
     borderColor: { light: '#FECDD3', dark: '#5B2B32' },
   },
 };
+
+const SAFE_TEXT_MAIN = '#FFFFFF';
+const SAFE_TEXT_SUB = '#8E8E93';
+const SAFE_STATUS_OK = '#34C759';
