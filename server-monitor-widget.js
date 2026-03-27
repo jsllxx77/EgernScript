@@ -125,6 +125,8 @@ function buildProbeCommand(config) {
     'if [ -z "$IFACE" ]; then printf "error=%s\\n" "unable to resolve network interface"; exit 0; fi',
     'UPTIME="$(uptime -p 2>/dev/null || true)"',
     'if [ -z "$UPTIME" ] && [ -r /proc/uptime ]; then UPTIME="$(cut -d. -f1 /proc/uptime)"; fi',
+    'sum_cpu_stat() { awk \'/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5; exit}\' /proc/stat; }',
+    'set -- $(sum_cpu_stat); CPUT1="$1"; CPUI1="$2"',
     'LOAD="$(cut -d" " -f1-3 /proc/loadavg 2>/dev/null || true)"',
     'MEM="$(free -m 2>/dev/null | awk \'/^Mem:/ {printf "%s %s %.0f", $2, $3, ($3/$2)*100}\')"',
     'if [ -z "$MEM" ] && [ -r /proc/meminfo ]; then MEM="$(awk \'/MemTotal:/ {t=$2} /MemAvailable:/ {a=$2} END {if (t > 0) {u=(t-a)/1024; printf "%d %d %.0f", t/1024, u, ((t-a)/t)*100}}\' /proc/meminfo)"; fi',
@@ -132,6 +134,10 @@ function buildProbeCommand(config) {
     'sum_disk_bytes() { r=0; w=0; for path in /sys/block/*/stat; do dev="${path%/stat}"; dev="${dev##*/}"; case "$dev" in loop*|ram*|sr*|fd*|dm-*|md*) continue ;; esac; read -r _ _ sectors_read _ _ _ _ sectors_written _ _ _ < "$path" || continue; r=$((r + sectors_read * 512)); w=$((w + sectors_written * 512)); done; printf "%s %s" "${r:-0}" "${w:-0}"; }',
     'set -- $(sum_disk_bytes); IOR1="$1"; IOW1="$2"',
     'sleep 1',
+    'set -- $(sum_cpu_stat); CPUT2="$1"; CPUI2="$2"',
+    'CPUD=$((CPUT2-CPUT1))',
+    'CPUID=$((CPUI2-CPUI1))',
+    'if [ "$CPUD" -le 0 ]; then CPU=0; else CPU=$(( (100 * (CPUD-CPUID)) / CPUD )); fi',
     'set -- $(sum_disk_bytes); IOR2="$1"; IOW2="$2"',
     'IOR=$((IOR2-IOR1))',
     'IOW=$((IOW2-IOW1))',
@@ -141,6 +147,7 @@ function buildProbeCommand(config) {
     'TX="$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)"',
     'printf "iface=%s\\n" "$IFACE"',
     'printf "uptime=%s\\n" "$UPTIME"',
+    'printf "cpu=%s\\n" "$CPU"',
     'printf "load=%s\\n" "$LOAD"',
     'printf "mem=%s\\n" "$MEM"',
     'printf "disk=%s\\n" "$DISK"',
@@ -177,6 +184,7 @@ function normalizeProbe(probe) {
   return {
     iface: probe.iface || '--',
     uptime: formatUptime(probe.uptime),
+    cpuPercent: parseInteger(probe.cpu, 0),
     load: formatLoad(probe.load),
     memoryText: memory,
     diskText: disk,
@@ -232,7 +240,6 @@ function buildViewModel(config, metrics, traffic) {
   const diskSecondary = usageSecondary(metrics.diskText);
   const memoryPercent = extractPercent(metrics.memoryText);
   const diskPercent = extractPercent(metrics.diskText);
-  const cpuPercent = loadToPercent(metrics.load);
   const uptimeDays = uptimeToDays(metrics.uptime);
 
   return {
@@ -260,7 +267,7 @@ function buildViewModel(config, metrics, traffic) {
     diskPrimary,
     diskSecondary,
     diskPercent,
-    cpuPercent,
+    cpuPercent: metrics.cpuPercent,
     uptimeDays,
     uptimeBadge: formatUptimeBadge(metrics.uptime),
     uptimeCompact: compactUptime(metrics.uptime),
@@ -355,6 +362,7 @@ function renderStaticDebugWidget(title, family) {
     iface: 'debug0',
     uptime: '1d 2h',
     load: '0.12 0.08 0.05',
+    cpuPercent: 18,
     memory: '4.2G/23G (18%)',
     disk: '12G/40G (30%)',
     inbound: '123 KB/s',
@@ -1071,14 +1079,6 @@ function loadPart(value, index) {
     .split(/\s+/)
     .filter(Boolean);
   return parts[index] || '--';
-}
-
-function loadToPercent(value) {
-  const first = Number.parseFloat(loadPart(value, 0));
-  if (!Number.isFinite(first)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(99, Math.round(first * 100)));
 }
 
 function uptimeToDays(value) {
