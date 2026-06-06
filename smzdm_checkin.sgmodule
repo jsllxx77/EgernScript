@@ -1,11 +1,12 @@
 #!name=什么值得买 每日签到
-#!desc=抓取 SMZDM APP Cookie/SK，并每日签到领取金币/积分。修正版：不使用 Rewrite，避免破坏 APP 原始签到 POST 导致 sign param not enough。
+#!desc=抓取 SMZDM Cookie/SK，并每日签到领取金币/积分。避开 /checkin 原生请求，防止 APP 页面 sign param not enough。
 #!author=Shawn & Ali
 #!homepage=https://github.com/jsllxx77/EgernScript
 #!tag=Check-in
 
 [Script]
-http-request ^https:\/\/user-api\.smzdm\.com\/(checkin|vip|task|dingyue|tuijian).*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/smzdm_checkin.js, requires-body=true, timeout=10, tag=什么值得买抓包, enable=true
+# 只抓取非签到接口，避免 Egern hook /checkin POST 后破坏 APP 原始 sign/body
+http-request ^https:\/\/user-api\.smzdm\.com\/(vip|task|dingyue|tuijian).*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/smzdm_checkin.js, requires-body=true, timeout=10, tag=什么值得买抓包, enable=true
 cron "10 9 * * *" script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/smzdm_checkin.js, timeout=60, tag=什么值得买签到, enable=true
 
 [MITM]
