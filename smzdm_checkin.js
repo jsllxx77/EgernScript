@@ -163,9 +163,10 @@ function getRequestHeader(headers, name) {
 }
 
 function captureRequest() {
-  const headers = (typeof $request !== 'undefined' && $request.headers) || {};
+  const req = (typeof $request !== 'undefined' && $request) || {};
+  const headers = req.headers || {};
   const cookie = getRequestHeader(headers, 'Cookie');
-  const body = (typeof $request !== 'undefined' && $request.body) || '';
+  const body = req.body || '';
   const sk = extractSk(body);
 
   if (cookie && cookie.includes('sess=')) {
@@ -175,7 +176,16 @@ function captureRequest() {
   } else {
     notify('什么值得买', 'Cookie 获取失败', '请求头里没有 sess，请在 APP 内触发签到/个人中心接口后重试');
   }
-  done({});
+
+  // 关键：显式放行原始请求，避免部分代理运行时把 POST body/sign 参数吞掉，
+  // 造成 APP 页面报 “sign param not enough”。
+  const passThrough = {
+    url: req.url,
+    method: req.method,
+    headers: req.headers,
+  };
+  if (Object.prototype.hasOwnProperty.call(req, 'body')) passThrough.body = req.body;
+  done(passThrough);
 }
 
 function request(options) {
