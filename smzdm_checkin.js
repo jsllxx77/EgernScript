@@ -172,9 +172,9 @@ function captureRequest() {
   if (cookie && cookie.includes('sess=')) {
     storageSet(cookie, 'SMZDM_COOKIE');
     if (sk) storageSet(sk, 'SMZDM_SK');
-    notify('什么值得买', 'Cookie 获取成功', sk ? '已保存 Cookie 和 SK' : '已保存 Cookie；未捕获到 SK，将尝试无 SK 签到');
+    notify('什么值得买', 'Cookie 获取成功', sk ? '已保存 Cookie 和 SK' : '已保存 Cookie；未捕获到 SK，请打开 VIP/任务页再触发一次抓包');
   } else {
-    notify('什么值得买', 'Cookie 获取失败', '请求头里没有 sess，请在 APP 内触发签到/个人中心接口后重试');
+    notify('什么值得买', 'Cookie 获取失败', '请求头里没有 sess，请在 APP 内触发个人中心/VIP/任务页接口后重试');
   }
 
   // 关键：显式放行原始请求，避免部分代理运行时把 POST body/sign 参数吞掉，
@@ -257,7 +257,8 @@ async function checkin() {
     if (rewardText) lines.push(`奖励：${rewardText}`);
     notify('什么值得买', '签到成功', lines.join('\n'));
   } catch (e) {
-    notify('什么值得买', '签到失败', String(e.message || e));
+    const skHint = sk ? '' : '\n提示：当前未保存 SK，请先打开 APP 的 VIP/任务/个人中心页，等“Cookie 获取成功：已保存 Cookie 和 SK”后再手动运行签到。';
+    notify('什么值得买', '签到失败', `${String(e.message || e)}${skHint}`);
   }
   done({});
 }
