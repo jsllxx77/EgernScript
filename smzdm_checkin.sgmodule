@@ -1,12 +1,12 @@
 #!name=什么值得买 Cookie 获取
-#!desc=SMZDM 仅抓 Cookie，不配置签到任务；手动签到请单独运行 smzdm_checkin.js。
+#!desc=SMZDM 仅从网页域名抓 Cookie，不 MITM user-api；手动签到请单独运行 smzdm_checkin.js。
 #!author=Shawn & Ali
 #!homepage=https://github.com/jsllxx77/EgernScript
 #!tag=Check-in
 
 [Script]
-# 仅读取请求头 Cookie，不读取/改写 body，尽量避免影响 APP 页面网络
-http-request ^https:\/\/user-api\.smzdm\.com\/(vip|task|dingyue|tuijian).*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/main/smzdm_checkin.js, requires-body=false, timeout=10, tag=什么值得买获取Cookie, enable=true
+# 仅读取网页请求头 Cookie，不读取/改写 body；避免 MITM user-api 导致 APP 网络错误
+http-request ^https:\/\/(www|zhiyou)\.smzdm\.com\/.*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/main/smzdm_checkin.js, requires-body=false, timeout=10, tag=什么值得买获取Cookie, enable=true
 
 [MITM]
-hostname = user-api.smzdm.com
+hostname = www.smzdm.com, zhiyou.smzdm.com
