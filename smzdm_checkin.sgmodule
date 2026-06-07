@@ -1,13 +1,12 @@
-#!name=什么值得买 每日签到
-#!desc=SMZDM 抓 Cookie/SK + 定时签到。抓包只拦截非 /checkin 接口，避免 sign param not enough。
+#!name=什么值得买 Cookie 获取
+#!desc=SMZDM 仅抓 Cookie，不配置签到任务；手动签到请单独运行 smzdm_checkin.js。
 #!author=Shawn & Ali
 #!homepage=https://github.com/jsllxx77/EgernScript
 #!tag=Check-in
 
 [Script]
-# 只抓少量非签到接口；需要 body 才能保存 sk，但不碰原生 /checkin，减少对 APP 正常页面的影响
-http-request ^https:\/\/user-api\.smzdm\.com\/(vip|task|dingyue|tuijian).*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/main/smzdm_checkin.js, requires-body=true, timeout=10, tag=什么值得买抓包, enable=true
-cron "10 9 * * *" script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/main/smzdm_checkin.js, timeout=60, tag=什么值得买签到, enable=true
+# 仅读取请求头 Cookie，不读取/改写 body，尽量避免影响 APP 页面网络
+http-request ^https:\/\/user-api\.smzdm\.com\/(vip|task|dingyue|tuijian).*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/main/smzdm_checkin.js, requires-body=false, timeout=10, tag=什么值得买获取Cookie, enable=true
 
 [MITM]
 hostname = user-api.smzdm.com

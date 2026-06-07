@@ -172,7 +172,7 @@ function captureRequest() {
   if (cookie && cookie.includes('sess=')) {
     storageSet(cookie, 'SMZDM_COOKIE');
     if (sk) storageSet(sk, 'SMZDM_SK');
-    notify('什么值得买', 'Cookie 获取成功', sk ? '已保存 Cookie 和 SK' : '已保存 Cookie；未捕获到 SK，请打开 VIP/任务页再触发一次抓包');
+    notify('什么值得买', 'Cookie 获取成功', sk ? '已保存 Cookie 和 SK' : '已保存 Cookie');
   } else {
     notify('什么值得买', 'Cookie 获取失败', '请求头里没有 sess，请在 APP 内触发个人中心/VIP/任务页接口后重试');
   }
