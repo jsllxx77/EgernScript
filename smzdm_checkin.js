@@ -3,7 +3,7 @@
 const SIGN_KEY = 'apr1$AwP!wRRT$gJ/q.X24poeBInlUJC';
 const API_BASE = 'https://user-api.smzdm.com';
 const DEFAULT_VERSION = '10.4.26';
-const SCRIPT_VERSION = '2026.06.07-debug1';
+const SCRIPT_VERSION = '2026.06.07-egern1';
 
 function md5(input) {
   // Pure JS MD5, no Node/CryptoJS dependency; works in Loon/Surge-like JS runtimes.
@@ -139,27 +139,39 @@ function buildForm(cookie, sk, nowSeconds) {
   return data;
 }
 
-function storageGet(key) {
+function storageGet(key, ctx) {
+  if (ctx && ctx.storage && typeof ctx.storage.get === 'function') return ctx.storage.get(key);
   if (typeof $persistentStore !== 'undefined') return $persistentStore.read(key);
   if (typeof $prefs !== 'undefined') return $prefs.valueForKey(key);
   return null;
 }
 
-function storageSet(value, key) {
+function storageSet(value, key, ctx) {
+  if (ctx && ctx.storage && typeof ctx.storage.set === 'function') {
+    ctx.storage.set(key, value);
+    return true;
+  }
   if (typeof $persistentStore !== 'undefined') return $persistentStore.write(value, key);
   if (typeof $prefs !== 'undefined') return $prefs.setValueForKey(value, key);
   return false;
 }
 
-function notify(title, subtitle, message) {
+function notify(title, subtitle, message, ctx) {
   const text = `${title} ${subtitle || ''} ${message || ''}`;
   try {
+    if (ctx && typeof ctx.notify === 'function') return ctx.notify({ title, subtitle: subtitle || '', body: message || '' });
     if (typeof $notification !== 'undefined') return $notification.post(title, subtitle || '', message || '');
     if (typeof $notify !== 'undefined') return $notify(title, subtitle || '', message || '');
     if (typeof console !== 'undefined' && console.log) console.log(text);
   } catch (e) {
     if (typeof console !== 'undefined' && console.log) console.log(`${text} notify_error=${e.message || e}`);
   }
+}
+
+function headerGet(headers, name) {
+  if (!headers) return '';
+  if (typeof headers.get === 'function') return headers.get(name) || '';
+  return getRequestHeader(headers, name);
 }
 
 function done(value) {
@@ -174,30 +186,39 @@ function getRequestHeader(headers, name) {
   return '';
 }
 
-function captureRequest() {
-  const req = (typeof $request !== 'undefined' && $request) || {};
+async function captureRequest(ctx) {
+  const req = (ctx && ctx.request) || (typeof $request !== 'undefined' && $request) || {};
   const headers = req.headers || {};
-  const cookie = getRequestHeader(headers, 'Cookie');
-  const body = req.body || '';
+  const cookie = headerGet(headers, 'Cookie');
+  let body = req.body || '';
+  if (ctx && ctx.request && typeof ctx.request.text === 'function') {
+    try { body = await ctx.request.text(); } catch (_) { body = ''; }
+  }
   const sk = extractSk(body);
   const url = req.url || '';
   const host = (String(url).match(/^https?:\/\/([^/]+)/) || [])[1] || 'unknown-host';
+  const storageApi = ctx && ctx.storage ? 'ctx.storage' : (typeof $persistentStore !== 'undefined' ? '$persistentStore' : (typeof $prefs !== 'undefined' ? '$prefs' : '无'));
 
   if (cookie && cookie.includes('sess=')) {
-    storageSet(cookie, 'SMZDM_COOKIE');
-    if (sk) storageSet(sk, 'SMZDM_SK');
-    notify('什么值得买', 'Cookie 获取成功', `版本：${SCRIPT_VERSION}\n来源：${host}\n已保存 Cookie${sk ? ' 和 SK' : ''}`);
+    const savedCookie = storageSet(cookie, 'SMZDM_COOKIE', ctx);
+    if (sk) storageSet(sk, 'SMZDM_SK', ctx);
+    const verifyCookie = storageGet('SMZDM_COOKIE', ctx);
+    notify('什么值得买', 'Cookie 获取成功', `版本：${SCRIPT_VERSION}\n来源：${host}\n存储：${storageApi}\n写入：${savedCookie ? '成功' : '失败'}\n读回：${verifyCookie ? '有' : '无'}\n已保存 Cookie${sk ? ' 和 SK' : ''}`, ctx);
   } else if (cookie) {
-    notify('什么值得买', '抓到请求但没有 sess', `版本：${SCRIPT_VERSION}\n来源：${host}\nCookie字段：${cookieKeys(cookie)}`);
+    notify('什么值得买', '抓到请求但没有 sess', `版本：${SCRIPT_VERSION}\n来源：${host}\n存储：${storageApi}\nCookie字段：${cookieKeys(cookie)}`, ctx);
   } else {
-    notify('什么值得买', '抓到请求但没有 Cookie', `版本：${SCRIPT_VERSION}\n来源：${host}\n请确认网页已登录，或换 www/zhiyou 页面刷新`);
+    notify('什么值得买', '抓到请求但没有 Cookie', `版本：${SCRIPT_VERSION}\n来源：${host}\n存储：${storageApi}\n请确认网页已登录，或换 www/zhiyou 页面刷新`, ctx);
   }
 
-  // 只做读取和保存，不回写请求对象，避免 Egern 对原请求二次改写导致 APP 网络异常。
+  // Egern request scripts return nothing to pass through.
   done({});
 }
 
-function request(options) {
+function request(options, ctx) {
+  if (ctx && ctx.http && typeof ctx.http.post === 'function') {
+    return ctx.http.post(options.url, { headers: options.headers, body: options.body, timeout: 30000 })
+      .then(async (resp) => ({ status: resp.status, body: await resp.text() }));
+  }
   if (typeof $httpClient !== 'undefined') {
     return new Promise((resolve, reject) => {
       $httpClient.post(options, (err, resp, body) => {
@@ -213,7 +234,7 @@ function request(options) {
   throw new Error('HTTP client is unavailable in this runtime.');
 }
 
-async function postApi(endpoint, cookie, sk) {
+async function postApi(endpoint, cookie, sk, ctx) {
   const cookies = parseCookies(cookie);
   const vc = cookies.device_smzdm_version_code || '866';
   const version = cookies.device_smzdm_version || DEFAULT_VERSION;
@@ -229,7 +250,7 @@ async function postApi(endpoint, cookie, sk) {
       request_key: `${Math.floor(Math.random() * 9000000000000000) + 1000000000000000}`,
     },
     body: encodeForm(form),
-  });
+  }, ctx);
   let json;
   try { json = JSON.parse(res.body || '{}'); } catch (e) { throw new Error(`响应不是 JSON: HTTP ${res.status} ${String(res.body).slice(0, 80)}`); }
   const code = json.error_code;
@@ -237,21 +258,22 @@ async function postApi(endpoint, cookie, sk) {
   return json;
 }
 
-async function checkin() {
-  const cookie = storageGet('SMZDM_COOKIE');
-  const sk = storageGet('SMZDM_SK') || '';
-  const runtime = typeof $httpClient !== 'undefined' ? '$httpClient' : (typeof $task !== 'undefined' ? '$task' : '无HTTP客户端');
-  notify('什么值得买', '手动签到开始', `版本：${SCRIPT_VERSION}\nCookie：${cookie ? '已保存' : '未保存'}\nSK：${sk ? '已保存' : '未保存'}\n运行时：${runtime}`);
+async function checkin(ctx) {
+  const cookie = storageGet('SMZDM_COOKIE', ctx);
+  const sk = storageGet('SMZDM_SK', ctx) || '';
+  const runtime = ctx && ctx.http ? 'ctx.http' : (typeof $httpClient !== 'undefined' ? '$httpClient' : (typeof $task !== 'undefined' ? '$task' : '无HTTP客户端'));
+  const storageApi = ctx && ctx.storage ? 'ctx.storage' : (typeof $persistentStore !== 'undefined' ? '$persistentStore' : (typeof $prefs !== 'undefined' ? '$prefs' : '无'));
+  notify('什么值得买', '手动签到开始', `版本：${SCRIPT_VERSION}\nCookie：${cookie ? '已保存' : '未保存'}\nSK：${sk ? '已保存' : '未保存'}\n运行时：${runtime}\n存储：${storageApi}`, ctx);
   if (!cookie || !cookie.includes('sess=')) {
-    notify('什么值得买', '签到失败', '未保存含 sess 的 Cookie。请先用 Cookie 获取模块打开 www.smzdm.com 或 zhiyou.smzdm.com 登录/刷新。');
+    notify('什么值得买', '签到失败', '未保存含 sess 的 Cookie。请先用 Cookie 获取模块打开 www.smzdm.com 或 zhiyou.smzdm.com 登录/刷新。', ctx);
     return done({});
   }
 
   try {
-    const checkinRes = await postApi('/checkin', cookie, sk);
+    const checkinRes = await postApi('/checkin', cookie, sk, ctx);
     let rewardText = '';
     try {
-      const rewardRes = await postApi('/checkin/all_reward', cookie, sk);
+      const rewardRes = await postApi('/checkin/all_reward', cookie, sk, ctx);
       const gift = (((rewardRes || {}).data || {}).normal_reward || {}).gift || {};
       rewardText = gift.title || gift.content_str || '';
     } catch (e) {
@@ -266,23 +288,17 @@ async function checkin() {
       `经验：+${d.cexperience || 0}`,
     ];
     if (rewardText) lines.push(`奖励：${rewardText}`);
-    notify('什么值得买', '签到成功', lines.join('\n'));
+    notify('什么值得买', '签到成功', lines.join('\n'), ctx);
   } catch (e) {
-    const skHint = sk ? '' : '\n提示：当前未保存 SK，请先打开 APP 的 VIP/任务/个人中心页，等“Cookie 获取成功：已保存 Cookie 和 SK”后再手动运行签到。';
-    notify('什么值得买', '签到失败', `${String(e.message || e)}${skHint}`);
+    const skHint = sk ? '' : '\n提示：当前未保存 SK；如果 API 要求 SK，网页 Cookie 可能不够。';
+    notify('什么值得买', '签到失败', `${String(e.message || e)}${skHint}`, ctx);
   }
   done({});
 }
 
-if (typeof module !== 'undefined') {
-  module.exports = { md5, parseCookies, signData, encodeForm, extractSk, buildForm };
+export default async function main(ctx) {
+  if (ctx && ctx.request) return captureRequest(ctx);
+  return checkin(ctx);
 }
 
-if (typeof $request !== 'undefined') {
-  captureRequest();
-} else if (typeof $done !== 'undefined') {
-  checkin();
-} else if (typeof module === 'undefined') {
-  notify('什么值得买', '脚本已启动', `版本：${SCRIPT_VERSION}\n未检测到 $request/$done，尝试按手动签到模式运行`);
-  checkin();
-}
+export { md5, parseCookies, signData, encodeForm, extractSk, buildForm };
