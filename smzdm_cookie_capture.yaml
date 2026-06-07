@@ -1,0 +1,24 @@
+name: "什么值得买 Cookie 获取"
+description: "SMZDM 仅从网页域名抓 Cookie，不 MITM user-api；手动签到请单独运行 smzdm_checkin.js。"
+author: "Shawn & Ali"
+homepage: "https://github.com/jsllxx77/EgernScript"
+
+scriptings:
+  - http_request:
+      name: "什么值得买获取Cookie"
+      match: "^https://(www|zhiyou)\\.smzdm\\.com/.*$"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/736622f/smzdm_checkin.js"
+      update_interval: 86400
+      max_size: 131072
+      timeout: 10
+      body_required: false
+
+mitm:
+  hostnames:
+    includes:
+      - "www.smzdm.com"
+      - "zhiyou.smzdm.com"
+    excludes:
+      - "user-api.smzdm.com"
+      - "*.qq.com"
+      - "*.weixin.qq.com"
