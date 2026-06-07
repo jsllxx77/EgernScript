@@ -177,15 +177,8 @@ function captureRequest() {
     notify('什么值得买', 'Cookie 获取失败', '请求头里没有 sess，请在 APP 内触发个人中心/VIP/任务页接口后重试');
   }
 
-  // 关键：显式放行原始请求，避免部分代理运行时把 POST body/sign 参数吞掉，
-  // 造成 APP 页面报 “sign param not enough”。
-  const passThrough = {
-    url: req.url,
-    method: req.method,
-    headers: req.headers,
-  };
-  if (Object.prototype.hasOwnProperty.call(req, 'body')) passThrough.body = req.body;
-  done(passThrough);
+  // 只做读取和保存，不回写请求对象，避免 Egern 对原请求二次改写导致 APP 网络异常。
+  done({});
 }
 
 function request(options) {
