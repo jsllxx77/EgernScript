@@ -1,31 +1,19 @@
-// ==UserScript==
-// @name        网易云Cookie提取
-// @match       https://music.163.com/*
-// @run-at      document-idle
-// ==/UserScript==
+// wyy.js — Surge http-response 脚本
+// 功能: MITM 解密 music.163.com 后, 从 Set-Cookie 响应头提取 MUSIC_U (HttpOnly, 页面 JS 无法读取)
+// 配合: wyy.sgmodule
+// 用法: 启用模块 → 登录 music.163.com → 通知中心出现通知 → 长按通知展开 → 长按正文拷贝
 
-(function() {
-    'use strict';
-    var btn = document.createElement('div');
-    btn.textContent = '复制Cookie';
-    btn.style.cssText = 'position:fixed;right:10px;bottom:80px;z-index:999999;'
-        + 'background:#e60026;color:#fff;padding:8px 14px;border-radius:20px;'
-        + 'font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);';
-    btn.onclick = function() {
-        var full = document.cookie.trim();
-        if (!full) { btn.textContent = '无Cookie，请先登录'; return; }
-        // 优先用剪贴板 API 直接复制完整 Cookie
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(full).then(function() {
-                btn.textContent = '已复制完整Cookie(' + full.length + '字符)!';
-                setTimeout(function(){ btn.textContent = '复制Cookie'; }, 2000);
-            }).catch(function() {
-                prompt('长按全选复制完整Cookie:', full);
-            });
-        } else {
-            // 兜底：弹窗显示，长按全选复制
-            prompt('长按全选复制完整Cookie:', full);
-        }
-    };
-    document.body.appendChild(btn);
-})();
+var setCookie = String($response.headers['Set-Cookie'] || $response.headers['set-cookie'] || '');
+var match = setCookie.match(/MUSIC_U=([^;]+)/);
+
+if (match) {
+  var value = match[1];
+  var last = $persistentStore.read('wyy_music_u');
+  if (last !== value) {
+    // 仅在 Cookie 变化时通知, 避免每次请求都弹
+    $persistentStore.write(value, 'wyy_music_u');
+    $notification.post('网易云Cookie', '已获取新MUSIC_U · 长按本通知可复制', 'MUSIC_U=' + value);
+  }
+}
+
+$done({});

@@ -1,0 +1,11 @@
+#!name=网易云 Cookie 提取
+#!desc=MITM 解密 music.163.com，登录后自动从 Set-Cookie 提取 MUSIC_U 并推送可复制通知（长按通知文本可拷贝）。
+#!author=jsllxx77
+#!homepage=https://github.com/jsllxx77/EgernScript
+#!tag=网易云
+
+[Script]
+wyy_cookie = type=http-response,pattern=^https?:\/\/[^\/]*music\.163\.com\/,script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/wyy.js, requires-body=false, timeout=10, tag=网易云Cookie提取, enable=true
+
+[MITM]
+hostname = %APPEND% music.163.com, *.music.163.com
