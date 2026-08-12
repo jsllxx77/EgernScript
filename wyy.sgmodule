@@ -5,7 +5,7 @@
 #!tag=网易云
 
 [Script]
-wyy_cookie = type=http-response,pattern=^https?:\/\/[^\/]*music\.163\.com\/,script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/wyy.js, requires-body=false, timeout=10, tag=网易云Cookie提取, enable=true, argument=89ed22692976ce7faade5440a30a26c2
+wyy_cookie = type=http-response,pattern=^https?:\/\/[^\/]*music\.163\.com\/,script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/wyy.js?v=2,script-update-interval=3600, requires-body=false, timeout=10, tag=网易云Cookie提取, enable=true, argument=89ed22692976ce7faade5440a30a26c2
 
 [MITM]
 hostname = %APPEND% music.163.com, *.music.163.com
