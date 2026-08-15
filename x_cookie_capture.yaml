@@ -33,5 +33,6 @@ mitm:
   hostnames:
     includes:
       - "api.twitter.com"
+      - "api.x.com"
       - "twitter.com"
       - "x.com"
