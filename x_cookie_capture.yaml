@@ -14,7 +14,7 @@ scriptings:
   - http_request:
       name: "X Cookie 捕获"
       match: "^https://(api\\.twitter\\.com|api\\.x\\.com|twitter\\.com|x\\.com)/.*$"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/ab4084a27192d3d262c6419e968e2692677a34e4/x_cookie_capture.js"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/bff9b4e4403e2ecd19d30a5129749cc19471a550/x_cookie_capture.js"
       update_interval: 86400
       max_size: 131072
       timeout: 15
@@ -23,7 +23,7 @@ scriptings:
         X_COOKIE_KEY: ""
   - generic:
       name: "X Cookie 导出"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/ab4084a27192d3d262c6419e968e2692677a34e4/x_cookie_capture.js"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/bff9b4e4403e2ecd19d30a5129749cc19471a550/x_cookie_capture.js"
       update_interval: 86400
       timeout: 15
       env:
