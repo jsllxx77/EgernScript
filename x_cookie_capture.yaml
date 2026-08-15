@@ -13,7 +13,7 @@ env_schema:
 scriptings:
   - http_request:
       name: "X Cookie 捕获"
-      match: "^https://(api\\.twitter\\.com|twitter\\.com|x\\.com)/.*$"
+      match: "^https://(api\\.twitter\\.com|api\\.x\\.com|twitter\\.com|x\\.com)/.*$"
       script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/ab4084a27192d3d262c6419e968e2692677a34e4/x_cookie_capture.js"
       update_interval: 86400
       max_size: 131072

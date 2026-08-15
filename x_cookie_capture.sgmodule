@@ -6,7 +6,7 @@
 
 [Script]
 # 仅读取请求头 Cookie，不读取/改写 body；推送 key 通过 argument 传入（留空则只通知复制）
-http-request ^https:\\/\\/(api\\.twitter\\.com|twitter\\.com|x\\.com)\\/.*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/ab4084a27192d3d262c6419e968e2692677a34e4/x_cookie_capture.js, requires-body=false, timeout=15, tag=X Cookie 捕获, argument=
+http-request ^https:\\/\\/(api\\.twitter\\.com|api\\.x\\.com|twitter\\.com|x\\.com)\\/.*$ script-path=https://raw.githubusercontent.com/jsllxx77/EgernScript/ab4084a27192d3d262c6419e968e2692677a34e4/x_cookie_capture.js, requires-body=false, timeout=15, tag=X Cookie 捕获, argument=
 
 [MITM]
 hostname = api.twitter.com, twitter.com, x.com

@@ -9,7 +9,9 @@
 
 const STORAGE_KEY = 'X_COOKIE_RAW';
 const STORAGE_KEY_TS = 'X_COOKIE_TS';
-const SCRIPT_VERSION = '2026.08.16-egern1';
+const STORAGE_KEY_DIAG = 'X_COOKIE_DIAG_COUNT';
+const DIAG_THRESHOLD = 20;
+const SCRIPT_VERSION = '2026.08.16-egern2';
 const PUSH_URL = 'https://wyy.wi11.de/x-cookie-update.php';
 
 // ---------- 通用兼容层 ----------
@@ -150,7 +152,13 @@ async function captureRequest(ctx) {
   }
 
   if (!cookies.auth_token || !cookies.ct0) {
-    done({}); // 未登录/无 cookie 的请求静默透传，不打扰
+    // 诊断: 请求匹配到了但没有完整 cookie —— 计数, 每 20 次通知一次证明脚本在运行
+    const n = parseInt(storageGet(STORAGE_KEY_DIAG, ctx) || '0', 10) + 1;
+    storageSet(String(n), STORAGE_KEY_DIAG, ctx);
+    if (n % DIAG_THRESHOLD === 0) {
+      notify('X Cookie', `诊断: 脚本在运行 (${n} 次)`, '已匹配到 X 请求, 但均无 auth_token/ct0。可能原因:\n① X app 走 QUIC/HTTP3 未过 MITM\n② app 证书固定\n③ 未登录\n请用 Safari 打开 x.com 登录后刷新试试', ctx);
+    }
+    done({}); // 未登录/无 cookie 的请求静默透传
     return;
   }
 
@@ -159,6 +167,7 @@ async function captureRequest(ctx) {
   if (raw && raw !== oldRaw) {
     storageSet(raw, STORAGE_KEY, ctx);
     storageSet(String(Math.floor(Date.now() / 1000)), STORAGE_KEY_TS, ctx);
+    storageSet('0', STORAGE_KEY_DIAG, ctx); // 捕获成功, 清零诊断计数
     await pushCookie(raw, ctx);
   }
   done({}); // 透传
