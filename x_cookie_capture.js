@@ -125,7 +125,7 @@ async function pushCookie(raw, ctx) {
       body: `cookie=${encodeURIComponent(raw)}`,
     }, ctx);
     if (resp.status === 200) {
-      notify('X Cookie', '✅ 服务器已自动更新', `len=${raw.length} · parse_hub_bot 约1分钟内生效`, ctx);
+      notify('X Cookie', '✅ 服务器已自动更新', `len=${raw.length} · parse_hub_bot 约1分钟内生效`, ctx, clipboardAction(raw));
     } else {
       notify('X Cookie', '❌ 服务器更新失败', `HTTP ${resp.status} ${String(resp.body).slice(0, 80)}`, ctx, clipboardAction(raw));
     }
@@ -157,8 +157,8 @@ async function captureRequest(ctx) {
   const raw = buildCookieStr(cookies);
   const oldRaw = storageGet(STORAGE_KEY, ctx) || '';
   if (raw && raw !== oldRaw) {
-    storageSet(STORAGE_KEY, raw, ctx);
-    storageSet(STORAGE_KEY_TS, String(Math.floor(Date.now() / 1000)), ctx);
+    storageSet(raw, STORAGE_KEY, ctx);
+    storageSet(String(Math.floor(Date.now() / 1000)), STORAGE_KEY_TS, ctx);
     await pushCookie(raw, ctx);
   }
   done({}); // 透传
