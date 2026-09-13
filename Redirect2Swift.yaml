@@ -22,4 +22,5 @@ body_rewrites:
 
 mitm:
   hostnames:
-    - t.me
+    includes:
+      - "t.me"
