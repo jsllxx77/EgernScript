@@ -1,0 +1,12 @@
+#!name=Redirect2Swift
+#!desc=TG外链接跳转Swiftgram
+#!author=ddgksf2013, jsllxx77
+#!homepage=https://github.com/jsllxx77/EgernScript
+#!tag=重定向, Swiftgram
+#!system=ios
+
+[URL Rewrite]
+^https?:\/\/t\.me\/(.+) sg://resolve?domain=$1 307
+
+[MITM]
+hostname = %APPEND% t.me

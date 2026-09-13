@@ -1,0 +1,13 @@
+name: "Redirect2Swift"
+description: "TG外链接跳转Swiftgram"
+author: "ddgksf2013, jsllxx77"
+homepage: "https://github.com/jsllxx77/EgernScript"
+
+url_rewrites:
+  - match: ^https?:\/\/t\.me\/(.+)
+    location: sg://resolve?domain=$1
+    status_code: 307
+
+mitm:
+  hostnames:
+    - t.me
