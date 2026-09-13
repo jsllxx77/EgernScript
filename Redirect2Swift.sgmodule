@@ -6,7 +6,12 @@
 #!system=ios
 
 [URL Rewrite]
-^https?:\/\/t\.me\/(.+) sg://resolve?domain=$1 307
+# 带有参数的链接（如 ?start=login），转为 & 连接
+^https?:\/\/t\.me\/([^\?\/]+)\?(.*) sg://resolve?domain=$1&$2 307
+# 带有消息ID的链接（如 /channel/123）
+^https?:\/\/t\.me\/([^\?\/]+)\/(\d+) sg://resolve?domain=$1&post=$2 307
+# 普通用户名或频道链接
+^https?:\/\/t\.me\/([^\?\/]+) sg://resolve?domain=$1 307
 
 [MITM]
 hostname = %APPEND% t.me
