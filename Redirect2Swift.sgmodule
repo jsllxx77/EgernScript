@@ -1,5 +1,5 @@
 #!name=Redirect2Swift
-#!desc=TG外链接跳转Swiftgram
+#!desc=TG外链接跳转Swiftgram（支持URL重写与网页按钮全局替换）
 #!author=ddgksf2013, jsllxx77
 #!homepage=https://github.com/jsllxx77/EgernScript
 #!tag=重定向, Swiftgram
@@ -12,6 +12,9 @@
 ^https?:\/\/t\.me\/([^\?\/]+)\/(\d+) sg://resolve?domain=$1&post=$2 307
 # 普通用户名或频道链接
 ^https?:\/\/t\.me\/([^\?\/]+) sg://resolve?domain=$1 307
+
+[Body Rewrite]
+http-response ^https?:\/\/t\.me\/ "tg:\/\/" "sg:\/\/"
 
 [MITM]
 hostname = %APPEND% t.me

@@ -1,5 +1,5 @@
 name: "Redirect2Swift"
-description: "TG外链接跳转Swiftgram"
+description: "TG外链接跳转Swiftgram（支持URL重写与网页按钮全局替换）"
 author: "ddgksf2013, jsllxx77"
 homepage: "https://github.com/jsllxx77/EgernScript"
 
@@ -13,6 +13,12 @@ url_rewrites:
   - match: ^https?:\/\/t\.me\/([^\?\/]+)
     location: sg://resolve?domain=$1
     status_code: 307
+
+body_rewrites:
+  - response_regex:
+      match: "^https?:\/\/t\\.me\/"
+      find: 'tg:\/\/'
+      replace: 'sg://'
 
 mitm:
   hostnames:
