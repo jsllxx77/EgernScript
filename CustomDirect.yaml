@@ -10,17 +10,36 @@ payload:
   - DOMAIN-SUFFIX,hybgzs.com
   - DOMAIN-SUFFIX,anyrouter.top
 
-  # ==================== 2. 腾讯手游(王者荣耀)与腾讯云 ====================
+  # ==================== 2. 腾讯手游与周边全生态 ====================
+  # 核心通用对战与底层架构
   - DOMAIN-SUFFIX,jkmobile.qq.com
   - DOMAIN-SUFFIX,tplay.qq.com
-  - DOMAIN-SUFFIX,smoba.qq.com
   - DOMAIN-SUFFIX,tencent-cloud.net
   - DOMAIN-SUFFIX,tencent.com
   - DOMAIN-SUFFIX,gcloudcs.com
   - DOMAIN-SUFFIX,gcloudsdk.com
+  - DOMAIN-SUFFIX,gcloud.qq.com
   - DOMAIN-SUFFIX,anticheatexpert.com
   - DOMAIN-SUFFIX,tcdnos.com
   - DOMAIN-SUFFIX,jomodns.com
+
+  # 游戏内组队实时语音 (GCloud Voice)
+  - DOMAIN-SUFFIX,voice.gcloudcs.com
+  - DOMAIN-SUFFIX,im.gcloud.qq.com
+
+  # 热门游戏专属域名 (王者/吃鸡/金铲铲/LOL/DNF/CFM等)
+  - DOMAIN-SUFFIX,smoba.qq.com
+  - DOMAIN-SUFFIX,gp.qq.com
+  - DOMAIN-SUFFIX,jcc.qq.com
+  - DOMAIN-SUFFIX,lolm.qq.com
+  - DOMAIN-SUFFIX,dnf.qq.com
+  - DOMAIN-SUFFIX,cfm.qq.com
+
+  # 游戏更新下载、活动与充值 (米大师)
+  - DOMAIN-SUFFIX,dldir1.qq.com
+  - DOMAIN-SUFFIX,down.qq.com
+  - DOMAIN-SUFFIX,game.qq.com
+  - DOMAIN-SUFFIX,midas.qq.com
 
   # ==================== 3. 微信与小游戏生态（防卡死） ====================
   - DOMAIN-SUFFIX,beacon.qq.com
