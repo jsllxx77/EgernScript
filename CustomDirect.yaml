@@ -1,0 +1,39 @@
+payload:
+  # ==================== 1. 自建服务与解析节点 ====================
+  - IP-CIDR,43.251.226.6/32,no-resolve
+  - DOMAIN,find.wi11.de
+  - DOMAIN-SUFFIX,pro.xns.one
+  - DOMAIN-SUFFIX,lot-ml.com
+  - DOMAIN-SUFFIX,sslip.io
+  - DOMAIN-SUFFIX,gantanhao.com
+  - DOMAIN-SUFFIX,ex-girlfriendis.best
+  - DOMAIN-SUFFIX,hybgzs.com
+  - DOMAIN-SUFFIX,anyrouter.top
+
+  # ==================== 2. 腾讯手游(王者荣耀)与腾讯云 ====================
+  - DOMAIN-SUFFIX,jkmobile.qq.com
+  - DOMAIN-SUFFIX,tplay.qq.com
+  - DOMAIN-SUFFIX,smoba.qq.com
+  - DOMAIN-SUFFIX,tencent-cloud.net
+  - DOMAIN-SUFFIX,tencent.com
+  - DOMAIN-SUFFIX,gcloudcs.com
+  - DOMAIN-SUFFIX,gcloudsdk.com
+  - DOMAIN-SUFFIX,anticheatexpert.com
+  - DOMAIN-SUFFIX,tcdnos.com
+  - DOMAIN-SUFFIX,jomodns.com
+
+  # ==================== 3. 微信与小游戏生态（防卡死） ====================
+  - DOMAIN-SUFFIX,beacon.qq.com
+  - DOMAIN-SUFFIX,servicewechat.com
+  - DOMAIN-SUFFIX,game.weixin.qq.com
+  - DOMAIN-SUFFIX,wxs.qq.com
+  - DOMAIN-SUFFIX,qpic.cn
+
+  # ==================== 4. 支付宝与蚂蚁生态 ====================
+  - DOMAIN-SUFFIX,alipay.com
+  - DOMAIN-SUFFIX,alipayobjects.com
+  - DOMAIN-SUFFIX,aliapp.org
+
+  # ==================== 5. 字节跳动与抖音生态 ====================
+  - DOMAIN-SUFFIX,volces.com
+  - DOMAIN-SUFFIX,bytecdn.cn
