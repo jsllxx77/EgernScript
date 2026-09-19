@@ -1,7 +1,5 @@
 payload:
   # ==================== 1. 自建服务与解析节点 ====================
-  - IP-CIDR,43.251.226.6/32,no-resolve
-  - DOMAIN,find.wi11.de
   - DOMAIN-SUFFIX,pro.xns.one
   - DOMAIN-SUFFIX,lot-ml.com
   - DOMAIN-SUFFIX,sslip.io
