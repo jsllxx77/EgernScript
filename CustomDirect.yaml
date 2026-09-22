@@ -8,6 +8,8 @@ payload:
   - DOMAIN-SUFFIX,hybgzs.com
   - DOMAIN-SUFFIX,anyrouter.top
   - DOMAIN-SUFFIX,ors.de5.net
+  # classifier.dev 免费免Key额度按出口IP判定，走代理(VPS)会被拒 403 proxy_requires_payment
+  - DOMAIN-SUFFIX,classifier.dev
 
   # ==================== 2. 腾讯手游与周边全生态 ====================
   # 核心通用对战与底层架构
