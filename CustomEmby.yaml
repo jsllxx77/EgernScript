@@ -1,0 +1,10 @@
+payload:
+  # ==================== 手工自建 / 收集 Emby 服 ====================
+  - DOMAIN-SUFFIX,tanhuatv.site
+  - DOMAIN-SUFFIX,newneeship.com
+  - DOMAIN-SUFFIX,lilyemby.com
+  - DOMAIN-SUFFIX,oceancloud.asia
+  - DOMAIN-SUFFIX,lilyya.top
+  - DOMAIN-SUFFIX,qzz.io
+  - DOMAIN-SUFFIX,111660.xyz
+  - DOMAIN-SUFFIX,lilyemby.cc
