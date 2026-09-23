@@ -6,7 +6,8 @@ payload:
   - DOMAIN-SUFFIX,gantanhao.com
   - DOMAIN-SUFFIX,ex-girlfriendis.best
   - DOMAIN-SUFFIX,hybgzs.com
-  - DOMAIN-SUFFIX,anyrouter.top
+  # anyrouter.top 已从 Cloudflare 迁至 initrr/阿里ESA；其权威 DNS 对大陆 ECS 仍下发
+  # 失效的 Cloudflare 优选IP(bestcf.030101.xyz→104.17.x)导致 TLS 握手失败，故不直连、改走代理
   - DOMAIN-SUFFIX,ors.de5.net
   # classifier.dev 免费免Key额度按出口IP判定，走代理(VPS)会被拒 403 proxy_requires_payment
   - DOMAIN-SUFFIX,classifier.dev
