@@ -1,17 +1,30 @@
 'use strict';
 
-// x_cookie_capture.js — 捕获 X (Twitter) app/网页的 auth_token + ct0
+// x_cookie_capture.js — 捕获 X (Twitter) 网页版的 auth_token + ct0
+//
+// ⚠️ 重要前提：X 的官方 App 不使用浏览器 Cookie（走 OAuth 会话令牌，且 App 有证书固定，
+//    MITM 也解不开），所以「打开 X App 抓 Cookie」这条路本身不成立。
+//    本脚本只能从浏览器抓：Safari / Chrome 打开 x.com 并登录。
+//
 // 模式:
-//   http_request 捕获: 请求带 Cookie 时提取 auth_token/ct0，变化则本地保存 + 推送服务器 + 通知
-//   generic 手动导出: 读取已保存的 cookie 并通知（Egern 点通知复制到剪贴板）
+//   http_request 捕获: 请求里出现 auth_token / ct0 就分别记账，凑齐后推送服务器 + 通知
+//   generic 手动导出: 读取已保存的 cookie 并通知（点通知复制到剪贴板）
 // 推送端点: https://wyy.wi11.de/x-cookie-update.php?key=<KEY>（KEY 来自 ctx.env.X_COOKIE_KEY / $argument）
-// 配合: x_cookie_capture.yaml / x_cookie_capture.sgmodule (MITM: api.twitter.com, twitter.com, x.com)
+// 配合: x_cookie_capture.yaml / x_cookie_capture.sgmodule（MITM: x.com, *.x.com, api.twitter.com …）
+//
+// 调试: 环境变量 DEBUG=true 时，每次匹配到请求都会发一条诊断通知（最多前 5 条 + 之后每 20 条一条），
+//       内容包含主机名、是否带 Cookie 头、Cookie 字段名、是否凑齐 auth_token / ct0。
+//       排查完记得关掉。
 
-const STORAGE_KEY = 'X_COOKIE_RAW';
-const STORAGE_KEY_TS = 'X_COOKIE_TS';
-const STORAGE_KEY_DIAG = 'X_COOKIE_DIAG_COUNT';
+const K_AUTH = 'X_AUTH_TOKEN';
+const K_CT0 = 'X_CT0';
+const K_RAW = 'X_COOKIE_RAW';
+const K_TS = 'X_COOKIE_TS';
+const K_DIAG = 'X_COOKIE_DIAG_COUNT';
+const K_DBG = 'X_COOKIE_DEBUG_SEEN';
 const DIAG_THRESHOLD = 20;
-const SCRIPT_VERSION = '2026.08.16-egern2';
+const DEBUG_ALWAYS = 5;
+const SCRIPT_VERSION = '2026.10.20-egern3';
 const PUSH_URL = 'https://wyy.wi11.de/x-cookie-update.php';
 
 // ---------- 通用兼容层 ----------
@@ -30,13 +43,6 @@ function parseCookies(cookieStr) {
   return out;
 }
 
-function buildCookieStr(cookies) {
-  const parts = [];
-  if (cookies.auth_token) parts.push(`auth_token=${cookies.auth_token}`);
-  if (cookies.ct0) parts.push(`ct0=${cookies.ct0}`);
-  return parts.join('; ');
-}
-
 function storageGet(key, ctx) {
   if (ctx && ctx.storage && typeof ctx.storage.get === 'function') return ctx.storage.get(key);
   if (typeof $persistentStore !== 'undefined') return $persistentStore.read(key);
@@ -45,6 +51,7 @@ function storageGet(key, ctx) {
 }
 
 function storageSet(value, key, ctx) {
+  if (!value) return false;
   if (ctx && ctx.storage && typeof ctx.storage.set === 'function') {
     ctx.storage.set(key, value);
     return true;
@@ -71,20 +78,36 @@ function notify(title, subtitle, message, ctx, action) {
 
 function headerGet(headers, name) {
   if (!headers) return '';
-  if (typeof headers.get === 'function') return headers.get(name) || '';
+  if (typeof headers.get === 'function') {
+    try { return headers.get(name) || ''; } catch (e) { /* fallthrough */ }
+  }
   const lower = name.toLowerCase();
   for (const key of Object.keys(headers)) {
-    if (String(key).toLowerCase() === lower) return headers[key];
+    if (String(key).toLowerCase() === lower) {
+      const v = headers[key];
+      return Array.isArray(v) ? v.join('; ') : String(v == null ? '' : v);
+    }
   }
   return '';
 }
 
 function done(value) {
   if (typeof $done !== 'undefined') return $done(value || {});
+  return undefined;
+}
+
+function getEnv(ctx, name) {
+  if (ctx && ctx.env && ctx.env[name]) return String(ctx.env[name]);
+  return '';
+}
+
+function isOn(v) {
+  return /^(1|true|yes|on)$/i.test(String(v || '').trim());
 }
 
 function getPushKey(ctx) {
-  if (ctx && ctx.env && ctx.env.X_COOKIE_KEY) return ctx.env.X_COOKIE_KEY;
+  const k = getEnv(ctx, 'X_COOKIE_KEY');
+  if (k) return k;
   if (typeof $argument !== 'undefined' && $argument) return String($argument);
   return '';
 }
@@ -113,6 +136,37 @@ function httpPost(url, options, ctx) {
   return Promise.reject(new Error('HTTP client unavailable'));
 }
 
+function clipboardAction(raw) {
+  // Egern 支持 action.clipboard，点通知即可复制；其他运行时忽略该字段
+  return { type: 'clipboard', text: raw };
+}
+
+function buildCookieStr(authToken, ct0) {
+  const parts = [];
+  if (authToken) parts.push(`auth_token=${authToken}`);
+  if (ct0) parts.push(`ct0=${ct0}`);
+  return parts.join('; ');
+}
+
+// ---------- 诊断 ----------
+
+function debugNotify(ctx, url, cookieHeader, cookies, authToken, ct0) {
+  if (!isOn(getEnv(ctx, 'DEBUG'))) return;
+  const seen = parseInt(storageGet(K_DBG, ctx) || '0', 10) + 1;
+  storageSet(String(seen), K_DBG, ctx);
+  if (seen > DEBUG_ALWAYS && seen % DIAG_THRESHOLD !== 0) return;
+
+  const host = (String(url).match(/^https?:\/\/([^/]+)/) || [])[1] || '?';
+  const keys = Object.keys(cookies);
+  const lines = [
+    `#${seen} host=${host}`,
+    `Cookie头: ${cookieHeader ? '有' : '无'}`,
+    `字段: ${keys.length ? keys.slice(0, 10).join(', ') : '（空）'}`,
+    `auth_token: ${authToken ? '有' : '无'} / ct0: ${ct0 ? '有' : '无'}`,
+  ];
+  notify('X Cookie 诊断', cookieHeader ? '脚本已运行' : '脚本已运行（无 Cookie）', lines.join('\n'), ctx);
+}
+
 // ---------- 捕获逻辑 ----------
 
 async function pushCookie(raw, ctx) {
@@ -136,54 +190,69 @@ async function pushCookie(raw, ctx) {
   }
 }
 
-function clipboardAction(raw) {
-  // Egern 支持 action.clipboard，点通知即可复制；其他运行时忽略该字段
-  return { type: 'clipboard', text: raw };
-}
-
 async function captureRequest(ctx) {
-  const req = (ctx && ctx.request) || (typeof $request !== 'undefined' && $request) || {};
+  // 只读请求头，绝不读 body：抓 cookie 不需要它，而 Egern 的 body 只能消费一次，
+  // 读了会把 X 的 POST（登录/发帖）请求体弄丢。
+  const req = ctx.request || (typeof $request !== 'undefined' ? $request : {}) || {};
   const headers = req.headers || {};
-  const cookies = parseCookies(headerGet(headers, 'Cookie'));
-  // X app 有时 ct0 只出现在 x-csrf-token 请求头
-  if (!cookies.ct0) {
-    const csrf = headerGet(headers, 'x-csrf-token');
-    if (csrf && /^[A-Za-z0-9_-]{16,}$/.test(csrf)) cookies.ct0 = csrf;
-  }
+  const url = req.url || '';
+  const cookieHeader = headerGet(headers, 'Cookie');
+  const cookies = parseCookies(cookieHeader);
 
-  if (!cookies.auth_token || !cookies.ct0) {
-    // 诊断: 请求匹配到了但没有完整 cookie —— 计数, 每 20 次通知一次证明脚本在运行
-    const n = parseInt(storageGet(STORAGE_KEY_DIAG, ctx) || '0', 10) + 1;
-    storageSet(String(n), STORAGE_KEY_DIAG, ctx);
+  // auth_token：只可能来自 Cookie（HttpOnly，但请求头里仍然会带）
+  const authToken = cookies.auth_token || storageGet(K_AUTH, ctx) || '';
+
+  // ct0：可能来自 Cookie，也可能只在 x-csrf-token 请求头里
+  let ct0 = cookies.ct0 || '';
+  if (!ct0) {
+    const csrf = headerGet(headers, 'x-csrf-token') || headerGet(headers, 'x-xsrf-token');
+    if (csrf && /^[A-Za-z0-9_\-+/=]{16,}$/.test(csrf)) ct0 = csrf;
+  }
+  if (!ct0) ct0 = storageGet(K_CT0, ctx) || '';
+
+  debugNotify(ctx, url, cookieHeader, cookies, authToken, ct0);
+
+  // 分别记账：任何一半出现都先存下来，另一半下次补齐
+  if (cookies.auth_token) storageSet(cookies.auth_token, K_AUTH, ctx);
+  if (cookies.ct0) storageSet(cookies.ct0, K_CT0, ctx);
+
+  if (!authToken || !ct0) {
+    // 没凑齐 → 静默透传，但保留心跳诊断（每 20 次提醒一次脚本在跑）
+    const n = parseInt(storageGet(K_DIAG, ctx) || '0', 10) + 1;
+    storageSet(String(n), K_DIAG, ctx);
     if (n % DIAG_THRESHOLD === 0) {
-      notify('X Cookie', `诊断: 脚本在运行 (${n} 次)`, '已匹配到 X 请求, 但均无 auth_token/ct0。可能原因:\n① X app 走 QUIC/HTTP3 未过 MITM\n② app 证书固定\n③ 未登录\n请用 Safari 打开 x.com 登录后刷新试试', ctx);
+      notify('X Cookie', `诊断: 脚本在运行（${n} 次）`, `已匹配到 X 请求，但尚未凑齐 auth_token + ct0。\n当前: auth_token=${authToken ? '有' : '无'} ct0=${ct0 ? '有' : '无'}\n请用 Safari 打开 x.com 并确认已登录；环境变量 DEBUG=true 可看每次请求的明细。`, ctx);
     }
-    done({}); // 未登录/无 cookie 的请求静默透传
-    return;
+    return done({}); // 透传
   }
 
-  const raw = buildCookieStr(cookies);
-  const oldRaw = storageGet(STORAGE_KEY, ctx) || '';
+  const raw = buildCookieStr(authToken, ct0);
+  const oldRaw = storageGet(K_RAW, ctx) || '';
   if (raw && raw !== oldRaw) {
-    storageSet(raw, STORAGE_KEY, ctx);
-    storageSet(String(Math.floor(Date.now() / 1000)), STORAGE_KEY_TS, ctx);
-    storageSet('0', STORAGE_KEY_DIAG, ctx); // 捕获成功, 清零诊断计数
+    storageSet(raw, K_RAW, ctx);
+    storageSet(String(Math.floor(Date.now() / 1000)), K_TS, ctx);
+    storageSet('0', K_DIAG, ctx);
     await pushCookie(raw, ctx);
   }
-  done({}); // 透传
+  return done({}); // 透传
 }
 
 // ---------- 手动导出（generic 脚本） ----------
 
 async function exportCookie(ctx) {
-  const raw = storageGet(STORAGE_KEY, ctx) || '';
-  const ts = storageGet(STORAGE_KEY_TS, ctx) || '';
+  const raw = storageGet(K_RAW, ctx) || buildCookieStr(storageGet(K_AUTH, ctx) || '', storageGet(K_CT0, ctx) || '');
+  const ts = storageGet(K_TS, ctx) || '';
   const date = ts ? new Date(Number(ts) * 1000).toLocaleString() : '';
+  const authToken = storageGet(K_AUTH, ctx) || '';
+  const ct0 = storageGet(K_CT0, ctx) || '';
   if (!raw) {
-    notify('X Cookie', '尚未捕获', '请先打开 X app 刷一下时间线，或登录网页版 x.com；确认 MITM 已开启且证书已信任。', ctx);
+    notify('X Cookie', '尚未捕获', '请用 Safari 打开 x.com 并登录（X 官方 App 不走网页 Cookie，抓不到）。确认 MITM 已开启、证书已信任，必要时开启「屏蔽 QUIC」后再试。', ctx);
     return done({});
   }
   notify('X Cookie', `捕获时间 ${date} · 点击复制`, raw, ctx, clipboardAction(raw));
+  if (!authToken || !ct0) {
+    notify('X Cookie', '提示', `当前只凑齐了一半：auth_token=${authToken ? '有' : '无'} ct0=${ct0 ? '有' : '无'}`);
+  }
   if (!getPushKey(ctx)) {
     notify('X Cookie', '提示', '未配置 X_COOKIE_KEY，不会自动推送服务器', ctx);
   }

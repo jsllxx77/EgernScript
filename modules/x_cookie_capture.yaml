@@ -1,5 +1,5 @@
 name: "X Cookie 捕获"
-description: "MITM 捕获 X app/网页的 auth_token + ct0：变化时自动推送到服务器更新 parse_hub_bot，并通知一键复制。打开 X app 刷一下即可触发；也可在脚本列表手动运行「X Cookie 导出」查看。"
+description: "MITM 捕获 X 网页版（浏览器打开 x.com）的 auth_token + ct0，凑齐后自动推送到服务器更新 parse_hub_bot，并通知一键复制。注意：X 官方 App 不使用网页 Cookie（走 OAuth 且证书固定），无法通过它捕获；排查抓不到的问题时把 DEBUG 设为 true。"
 author: "Shawn & Ali"
 homepage: "https://github.com/jsllxx77/EgernScript"
 icon: "bird.fill"
@@ -9,30 +9,38 @@ env_schema:
     name: 推送密钥
     description: "服务器端 x-cookie-update.php 的 key（https://wyy.wi11.de/x-cookie-update.php）"
     default_value: ""
+  DEBUG:
+    name: 调试通知
+    description: "开启后，每次匹配到 X 请求都发一条诊断通知（主机名 / 是否有 Cookie 头 / Cookie 字段名 / 是否凑齐），用于排查抓不到的原因"
+    options:
+      - "true"
+      - "false"
 
 scriptings:
   - http_request:
       name: "X Cookie 捕获"
-      match: "^https://(api\\.twitter\\.com|api\\.x\\.com|twitter\\.com|x\\.com)/.*$"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js"
+      match: "^https://([A-Za-z0-9-]+\\.)?(x\\.com|twitter\\.com)/.*$"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js?v=20261020"
       update_interval: 86400
       max_size: 131072
       timeout: 15
       body_required: false
       env:
         X_COOKIE_KEY: ""
+        DEBUG: ""
   - generic:
       name: "X Cookie 导出"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js?v=20261020"
       update_interval: 86400
       timeout: 15
       env:
         X_COOKIE_KEY: ""
+        DEBUG: ""
 
 mitm:
   hostnames:
     includes:
-      - "api.twitter.com"
-      - "api.x.com"
-      - "twitter.com"
       - "x.com"
+      - "*.x.com"
+      - "twitter.com"
+      - "api.twitter.com"
