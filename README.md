@@ -1,9 +1,20 @@
 # EgernScript
 
-给 [Egern](https://egernapp.com/) 用的脚本仓库。  
-目前包含一个通过 SSH 监控 Linux 服务器状态的小组件脚本：
+给 [Egern](https://egernapp.com/) / Surge 用的脚本与规则仓库。
 
-- `server-monitor-widget.js`
+## 目录结构
+
+| 目录 | 内容 | 说明 |
+| --- | --- | --- |
+| [`modules/`](modules) | `.sgmodule` / `.yaml` | 模块配置。同一功能的 Surge 版（`.sgmodule`）与 Egern 版（`.yaml`）成对存放 |
+| [`rules/`](rules) | `.yaml` / `.list` | 分流规则集，作为 rule provider 或规则列表引用 |
+| [`scripts/`](scripts) | `.js` | 脚本本体，由 `modules/` 里的 `script_url` / `script-path` 远程引用 |
+
+新增文件请按上面三类放进对应目录，并同步更新本文末尾的「文件索引」。
+
+## 服务器监控小组件
+
+通过 SSH 监控 Linux 服务器状态，脚本位于 `scripts/server-monitor-widget.js`。
 
 ## 功能
 
@@ -23,7 +34,7 @@
 ## 使用方法
 
 1. 在 Egern 里新建一个 `generic` 类型脚本
-2. 把仓库里的 `server-monitor-widget.js` 内容贴进去
+2. 把仓库里的 `scripts/server-monitor-widget.js` 内容贴进去
 3. 新建一个 widget，并把 `script_name` 指向这个脚本
 4. 填好对应环境变量
 
@@ -33,7 +44,7 @@
 scriptings:
   - generic:
       name: "server-monitor-widget"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/main/server-monitor-widget.js"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/server-monitor-widget.js"
       timeout: 20
 
 widgets:
@@ -89,6 +100,21 @@ widgets:
 - `IFACE` 不填时会优先尝试自动探测默认路由网卡
 - 桌面中组件目前使用了更稳的简化布局，优先保证桌面正常渲染
 
-## 文件
+## 文件索引
 
-- `server-monitor-widget.js`：Egern 服务器监控小组件脚本
+| 文件 | 说明 |
+| --- | --- |
+| [`scripts/server-monitor-widget.js`](scripts/server-monitor-widget.js) | Egern 服务器监控小组件脚本 |
+| [`scripts/smzdm_checkin.js`](scripts/smzdm_checkin.js) | 什么值得买 Cookie 捕获 / 手动签到 |
+| [`scripts/x_cookie_capture.js`](scripts/x_cookie_capture.js) | X（Twitter）`auth_token` + `ct0` 捕获并推送服务器 |
+| [`scripts/wyy.js`](scripts/wyy.js) | 网易云 Cookie 提取并推送服务器 |
+| [`modules/Redirect2Swift.sgmodule`](modules/Redirect2Swift.sgmodule) | TG 外链跳转 Swiftgram（Surge） |
+| [`modules/Redirect2Swift.yaml`](modules/Redirect2Swift.yaml) | TG 外链跳转 Swiftgram（Egern） |
+| [`modules/smzdm_checkin.sgmodule`](modules/smzdm_checkin.sgmodule) | 什么值得买 Cookie 获取（Surge） |
+| [`modules/smzdm_cookie_capture.yaml`](modules/smzdm_cookie_capture.yaml) | 什么值得买 Cookie 获取（Egern） |
+| [`modules/x_cookie_capture.sgmodule`](modules/x_cookie_capture.sgmodule) | X Cookie 捕获（Surge） |
+| [`modules/x_cookie_capture.yaml`](modules/x_cookie_capture.yaml) | X Cookie 捕获（Egern） |
+| [`modules/wyy.sgmodule`](modules/wyy.sgmodule) | 网易云 Cookie 提取（Surge） |
+| [`rules/CustomDirect.yaml`](rules/CustomDirect.yaml) | 直连域名规则集 |
+| [`rules/CustomEmby.yaml`](rules/CustomEmby.yaml) | Emby 服务器规则集 |
+| [`rules/surge-reject-drop.list`](rules/surge-reject-drop.list) | 广告 / 统计域名 REJECT 列表 |

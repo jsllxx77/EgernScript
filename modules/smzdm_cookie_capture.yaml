@@ -7,7 +7,7 @@ scriptings:
   - http_request:
       name: "什么值得买获取Cookie"
       match: "^https://(www|zhiyou)\\.smzdm\\.com/.*$"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/736622f/smzdm_checkin.js"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/smzdm_checkin.js"
       update_interval: 86400
       max_size: 131072
       timeout: 10
