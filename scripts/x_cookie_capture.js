@@ -180,10 +180,16 @@ async function pushCookie(raw, ctx) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `cookie=${encodeURIComponent(raw)}`,
     }, ctx);
+    const bodyText = String(resp.body || '').slice(0, 120);
     if (resp.status === 200) {
       notify('X Cookie', '✅ 服务器已自动更新', `len=${raw.length} · parse_hub_bot 约1分钟内生效`, ctx, clipboardAction(raw));
+    } else if (resp.status === 401 || resp.status === 403) {
+      // 打出 key 长度：可区分「没填」「填错」「多了空格/换行」三种情况
+      notify('X Cookie', '❌ 推送被拒：密钥无效',
+        `服务器返回 HTTP ${resp.status} ${bodyText}\n当前 X_COOKIE_KEY 长度 = ${key.length}\n请确认它与服务器 x-cookie-update.php 里的 key 完全一致（注意首尾空格、换行）`,
+        ctx, clipboardAction(raw));
     } else {
-      notify('X Cookie', '❌ 服务器更新失败', `HTTP ${resp.status} ${String(resp.body).slice(0, 80)}`, ctx, clipboardAction(raw));
+      notify('X Cookie', '❌ 服务器更新失败', `HTTP ${resp.status} ${bodyText}`, ctx, clipboardAction(raw));
     }
   } catch (e) {
     notify('X Cookie', '❌ 推送失败', String(e.message || e), ctx, clipboardAction(raw));
