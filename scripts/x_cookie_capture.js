@@ -8,23 +8,28 @@
 //
 // 模式:
 //   http_request 捕获: 请求里出现 auth_token / ct0 就分别记账，凑齐后推送服务器 + 通知
-//   generic 手动导出: 读取已保存的 cookie 并通知（点通知复制到剪贴板）
+//   generic 手动导出: 读取已保存的 cookie 并通知（点通知复制到剪贴板，不受 NOTIFY 开关影响）
 // 推送端点: https://wyy.wi11.de/x-cookie-update.php?key=<KEY>（KEY 来自 ctx.env.X_COOKIE_KEY / $argument）
 // 配合: x_cookie_capture.yaml / x_cookie_capture.sgmodule（MITM: x.com, *.x.com, api.twitter.com …）
 //
-// 调试: 环境变量 DEBUG=true 时，每次匹配到请求都会发一条诊断通知（最多前 5 条 + 之后每 20 条一条），
-//       内容包含主机名、是否带 Cookie 头、Cookie 字段名、是否凑齐 auth_token / ct0。
-//       排查完记得关掉。
+// 环境变量:
+//   X_COOKIE_KEY  推送密钥（首尾空白会被自动剔除）
+//   NOTIFY        通知策略：all（默认，全部） / errors（只报错误） / off（完全不弹）
+//   DEBUG         true 时每次匹配都发诊断通知（排查用，需要 NOTIFY 不为 off）
+//
+// 去重: 同一条 cookie 在 PUSH_COOLDOWN 秒内只推送/通知一次，避免 x.com 并发请求导致重复弹窗。
 
 const K_AUTH = 'X_AUTH_TOKEN';
 const K_CT0 = 'X_CT0';
 const K_RAW = 'X_COOKIE_RAW';
 const K_TS = 'X_COOKIE_TS';
+const K_LAST = 'X_LAST_PUSH';
 const K_DIAG = 'X_COOKIE_DIAG_COUNT';
 const K_DBG = 'X_COOKIE_DEBUG_SEEN';
 const DIAG_THRESHOLD = 20;
 const DEBUG_ALWAYS = 5;
-const SCRIPT_VERSION = '2026.10.20-egern3';
+const PUSH_COOLDOWN = 20;
+const SCRIPT_VERSION = '2026.10.21-egern4';
 const PUSH_URL = 'https://wyy.wi11.de/x-cookie-update.php';
 
 // ---------- 通用兼容层 ----------
@@ -61,12 +66,34 @@ function storageSet(value, key, ctx) {
   return false;
 }
 
-function notify(title, subtitle, message, ctx, action) {
+function getEnv(ctx, name) {
+  if (ctx && ctx.env && ctx.env[name]) return String(ctx.env[name]);
+  return '';
+}
+
+function isOn(v) {
+  return /^(1|true|yes|on)$/i.test(String(v || '').trim());
+}
+
+// 通知策略：all | errors | off
+function notifyMode(ctx) {
+  const m = String(getEnv(ctx, 'NOTIFY') || 'all').trim().toLowerCase();
+  return m === 'off' || m === 'errors' ? m : 'all';
+}
+
+// opts: { action, kind: 'info'|'error', force }
+function notify(title, subtitle, message, ctx, opts) {
+  const o = opts || {};
+  if (!o.force) {
+    const mode = notifyMode(ctx);
+    if (mode === 'off') return undefined;
+    if (mode === 'errors' && o.kind !== 'error') return undefined;
+  }
   try {
     if (ctx && typeof ctx.notify === 'function') {
-      const opts = { title, subtitle: subtitle || '', body: message || '' };
-      if (action) opts.action = action;
-      return ctx.notify(opts);
+      const payload = { title, subtitle: subtitle || '', body: message || '' };
+      if (o.action) payload.action = o.action;
+      return ctx.notify(payload);
     }
     if (typeof $notification !== 'undefined') return $notification.post(title, subtitle || '', message || '');
     if (typeof $notify !== 'undefined') return $notify(title, subtitle || '', message || '');
@@ -74,6 +101,7 @@ function notify(title, subtitle, message, ctx, action) {
   } catch (e) {
     if (typeof console !== 'undefined' && console.log) console.log(`notify_error=${e.message || e}`);
   }
+  return undefined;
 }
 
 function headerGet(headers, name) {
@@ -94,15 +122,6 @@ function headerGet(headers, name) {
 function done(value) {
   if (typeof $done !== 'undefined') return $done(value || {});
   return undefined;
-}
-
-function getEnv(ctx, name) {
-  if (ctx && ctx.env && ctx.env[name]) return String(ctx.env[name]);
-  return '';
-}
-
-function isOn(v) {
-  return /^(1|true|yes|on)$/i.test(String(v || '').trim());
 }
 
 function getPushKey(ctx) {
@@ -133,7 +152,7 @@ function httpPost(url, options, ctx) {
     });
   }
   if (typeof $task !== 'undefined') {
-    return $task.fetch({ method: 'POST', url, headers: options.headers, body: options.body })
+    return $task.fetch({ method: 'POST', url: options.url || url, headers: options.headers, body: options.body })
       .then((resp) => ({ status: resp.statusCode, body: resp.body }));
   }
   return Promise.reject(new Error('HTTP client unavailable'));
@@ -167,7 +186,7 @@ function debugNotify(ctx, url, cookieHeader, cookies, authToken, ct0) {
     `字段: ${keys.length ? keys.slice(0, 10).join(', ') : '（空）'}`,
     `auth_token: ${authToken ? '有' : '无'} / ct0: ${ct0 ? '有' : '无'}`,
   ];
-  notify('X Cookie 诊断', cookieHeader ? '脚本已运行' : '脚本已运行（无 Cookie）', lines.join('\n'), ctx);
+  notify('X Cookie 诊断', cookieHeader ? '脚本已运行' : '脚本已运行（无 Cookie）', lines.join('\n'), ctx, { kind: 'info' });
 }
 
 // ---------- 捕获逻辑 ----------
@@ -175,7 +194,7 @@ function debugNotify(ctx, url, cookieHeader, cookies, authToken, ct0) {
 async function pushCookie(raw, ctx) {
   const key = getPushKey(ctx);
   if (!key) {
-    notify('X Cookie', '已捕获（未配置推送KEY）', raw, ctx, clipboardAction(raw));
+    notify('X Cookie', '已捕获（未配置推送KEY）', raw, ctx, { action: clipboardAction(raw), kind: 'info' });
     return;
   }
   try {
@@ -185,17 +204,17 @@ async function pushCookie(raw, ctx) {
     }, ctx);
     const bodyText = String(resp.body || '').slice(0, 120);
     if (resp.status === 200) {
-      notify('X Cookie', '✅ 服务器已自动更新', `len=${raw.length} · parse_hub_bot 约1分钟内生效`, ctx, clipboardAction(raw));
+      notify('X Cookie', '✅ 服务器已自动更新', `len=${raw.length} · parse_hub_bot 约1分钟内生效`, ctx, { kind: 'info' });
     } else if (resp.status === 401 || resp.status === 403) {
       // 打出 key 长度：可区分「没填」「填错」「多了空格/换行」三种情况
       notify('X Cookie', '❌ 推送被拒：密钥无效',
         `服务器返回 HTTP ${resp.status} ${bodyText}\n当前 X_COOKIE_KEY 长度 = ${key.length}\n请确认它与服务器 x-cookie-update.php 里的 key 完全一致（注意首尾空格、换行）`,
-        ctx, clipboardAction(raw));
+        ctx, { action: clipboardAction(raw), kind: 'error' });
     } else {
-      notify('X Cookie', '❌ 服务器更新失败', `HTTP ${resp.status} ${bodyText}`, ctx, clipboardAction(raw));
+      notify('X Cookie', '❌ 服务器更新失败', `HTTP ${resp.status} ${bodyText}`, ctx, { action: clipboardAction(raw), kind: 'error' });
     }
   } catch (e) {
-    notify('X Cookie', '❌ 推送失败', String(e.message || e), ctx, clipboardAction(raw));
+    notify('X Cookie', '❌ 推送失败', String(e.message || e), ctx, { action: clipboardAction(raw), kind: 'error' });
   }
 }
 
@@ -230,23 +249,30 @@ async function captureRequest(ctx) {
     const n = parseInt(storageGet(K_DIAG, ctx) || '0', 10) + 1;
     storageSet(String(n), K_DIAG, ctx);
     if (n % DIAG_THRESHOLD === 0) {
-      notify('X Cookie', `诊断: 脚本在运行（${n} 次）`, `已匹配到 X 请求，但尚未凑齐 auth_token + ct0。\n当前: auth_token=${authToken ? '有' : '无'} ct0=${ct0 ? '有' : '无'}\n请用 Safari 打开 x.com 并确认已登录；环境变量 DEBUG=true 可看每次请求的明细。`, ctx);
+      notify('X Cookie', `诊断: 脚本在运行（${n} 次）`, `已匹配到 X 请求，但尚未凑齐 auth_token + ct0。\n当前: auth_token=${authToken ? '有' : '无'} ct0=${ct0 ? '有' : '无'}\n请用 Safari 打开 x.com 并确认已登录；环境变量 DEBUG=true 可看每次请求的明细。`, ctx, { kind: 'info' });
     }
     return done({}); // 透传
   }
 
   const raw = buildCookieStr(authToken, ct0);
   const oldRaw = storageGet(K_RAW, ctx) || '';
-  if (raw && raw !== oldRaw) {
+  const now = Math.floor(Date.now() / 1000);
+  const lastPush = parseInt(storageGet(K_LAST, ctx) || '0', 10);
+
+  // cookie 变了 且 距离上次推送超过冷却时间，才推送+通知。
+  // x.com 一次打开会并发多条请求，两个脚本实例可能在极短时间内都判定「cookie 是新的」，
+  // 冷却窗口把这种情况收敛成一条通知。
+  if (raw && raw !== oldRaw && now - lastPush >= PUSH_COOLDOWN) {
     storageSet(raw, K_RAW, ctx);
-    storageSet(String(Math.floor(Date.now() / 1000)), K_TS, ctx);
+    storageSet(String(now), K_TS, ctx);
+    storageSet(String(now), K_LAST, ctx);
     storageSet('0', K_DIAG, ctx);
     await pushCookie(raw, ctx);
   }
   return done({}); // 透传
 }
 
-// ---------- 手动导出（generic 脚本） ----------
+// ---------- 手动导出（generic 脚本，通知强制显示） ----------
 
 async function exportCookie(ctx) {
   const raw = storageGet(K_RAW, ctx) || buildCookieStr(storageGet(K_AUTH, ctx) || '', storageGet(K_CT0, ctx) || '');
@@ -255,15 +281,15 @@ async function exportCookie(ctx) {
   const authToken = storageGet(K_AUTH, ctx) || '';
   const ct0 = storageGet(K_CT0, ctx) || '';
   if (!raw) {
-    notify('X Cookie', '尚未捕获', '请用 Safari 打开 x.com 并登录（X 官方 App 不走网页 Cookie，抓不到）。确认 MITM 已开启、证书已信任，必要时开启「屏蔽 QUIC」后再试。', ctx);
+    notify('X Cookie', '尚未捕获', '请用 Safari 打开 x.com 并登录（X 官方 App 不走网页 Cookie，抓不到）。确认 MITM 已开启、证书已信任，必要时开启「屏蔽 QUIC」后再试。', ctx, { force: true });
     return done({});
   }
-  notify('X Cookie', `捕获时间 ${date} · 点击复制`, raw, ctx, clipboardAction(raw));
+  notify('X Cookie', `捕获时间 ${date} · 点击复制`, raw, ctx, { action: clipboardAction(raw), force: true });
   if (!authToken || !ct0) {
-    notify('X Cookie', '提示', `当前只凑齐了一半：auth_token=${authToken ? '有' : '无'} ct0=${ct0 ? '有' : '无'}`);
+    notify('X Cookie', '提示', `当前只凑齐了一半：auth_token=${authToken ? '有' : '无'} ct0=${ct0 ? '有' : '无'}`, ctx, { force: true });
   }
   if (!getPushKey(ctx)) {
-    notify('X Cookie', '提示', '未配置 X_COOKIE_KEY，不会自动推送服务器', ctx);
+    notify('X Cookie', '提示', '未配置 X_COOKIE_KEY，不会自动推送服务器', ctx, { force: true });
   }
   done({});
 }

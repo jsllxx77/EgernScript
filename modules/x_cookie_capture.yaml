@@ -9,9 +9,16 @@ env_schema:
     name: 推送密钥
     description: "服务器端 x-cookie-update.php 的 key（https://wyy.wi11.de/x-cookie-update.php）"
     default_value: ""
+  NOTIFY:
+    name: 通知
+    description: "all=每次捕获都弹（默认）；errors=只弹失败；off=完全不弹（手动运行「X Cookie 导出」仍会弹）"
+    options:
+      - "all"
+      - "errors"
+      - "off"
   DEBUG:
     name: 调试通知
-    description: "开启后，每次匹配到 X 请求都发一条诊断通知（主机名 / 是否有 Cookie 头 / Cookie 字段名 / 是否凑齐），用于排查抓不到的原因"
+    description: "开启后，每次匹配到 X 请求都发一条诊断通知（主机名 / 是否有 Cookie 头 / Cookie 字段名 / 是否凑齐），用于排查抓不到的原因；需要通知不为 off"
     options:
       - "true"
       - "false"
@@ -20,21 +27,23 @@ scriptings:
   - http_request:
       name: "X Cookie 捕获"
       match: "^https://([A-Za-z0-9-]+\\.)?(x\\.com|twitter\\.com)/.*$"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js?v=20261022"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js?v=20261023"
       update_interval: 86400
       max_size: 131072
       timeout: 15
       body_required: false
       env:
         X_COOKIE_KEY: ""
+        NOTIFY: ""
         DEBUG: ""
   - generic:
       name: "X Cookie 导出"
-      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js?v=20261022"
+      script_url: "https://raw.githubusercontent.com/jsllxx77/EgernScript/refs/heads/main/scripts/x_cookie_capture.js?v=20261023"
       update_interval: 86400
       timeout: 15
       env:
         X_COOKIE_KEY: ""
+        NOTIFY: ""
         DEBUG: ""
 
 mitm:
