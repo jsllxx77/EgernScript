@@ -106,9 +106,12 @@ function isOn(v) {
 }
 
 function getPushKey(ctx) {
-  const k = getEnv(ctx, 'X_COOKIE_KEY');
+  // 去掉所有空白字符：从终端/聊天窗口粘贴 key 时极易带上尾部换行或空格，
+  // 那会让 key 变成 33 位从而被服务器判为 invalid key。
+  const clean = (v) => String(v == null ? '' : v).replace(/\s+/g, '');
+  const k = clean(getEnv(ctx, 'X_COOKIE_KEY'));
   if (k) return k;
-  if (typeof $argument !== 'undefined' && $argument) return String($argument);
+  if (typeof $argument !== 'undefined' && $argument) return clean($argument);
   return '';
 }
 
