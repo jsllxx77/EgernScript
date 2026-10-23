@@ -57,6 +57,32 @@ payload:
   - DOMAIN-SUFFIX,alipayobjects.com
   - DOMAIN-SUFFIX,aliapp.org
 
-  # ==================== 5. 字节跳动与抖音生态 ====================
+  # ==================== 5. 字节跳动与抖音生态（含抖音直播拉流 CDN） ====================
   - DOMAIN-SUFFIX,volces.com
   - DOMAIN-SUFFIX,bytecdn.cn
+  # 抖音主站 / 直播
+  - DOMAIN-SUFFIX,douyin.com
+  - DOMAIN-SUFFIX,douyincdn.com
+  - DOMAIN-SUFFIX,douyinvod.com
+  - DOMAIN-SUFFIX,douyinstatic.com
+  - DOMAIN-SUFFIX,douyinpic.com
+  # 直播信令 / webcast
+  - DOMAIN-SUFFIX,amemv.com
+  - DOMAIN-SUFFIX,snssdk.com
+  - DOMAIN-SUFFIX,pstatp.com
+  - DOMAIN-SUFFIX,ipstatp.com
+  - DOMAIN-SUFFIX,isnssdk.com
+  - DOMAIN-SUFFIX,sgpstatp.com
+  # 字节 CDN / 图片 / 其他
+  - DOMAIN-SUFFIX,byteimg.com
+  - DOMAIN-SUFFIX,bytedance.com
+  - DOMAIN-SUFFIX,volccdn.com
+  - DOMAIN-SUFFIX,ixigua.com
+  - DOMAIN-SUFFIX,huoshan.com
+  # 抖音直播 CDN 常见 CNAME 落地域
+  - DOMAIN-SUFFIX,zjcdn.com
+  - DOMAIN-SUFFIX,wsdvs.com
+  - DOMAIN-SUFFIX,gccdn.net
+  - DOMAIN-SUFFIX,cdnhwc2.com
+  - DOMAIN-SUFFIX,queniukw.com
+  - DOMAIN-SUFFIX,cdnbuild.net
