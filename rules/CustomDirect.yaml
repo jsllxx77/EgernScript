@@ -86,3 +86,6 @@ payload:
   - DOMAIN-SUFFIX,cdnhwc2.com
   - DOMAIN-SUFFIX,queniukw.com
   - DOMAIN-SUFFIX,cdnbuild.net
+
+  # ==================== 6. 其他直连 ====================
+  - DOMAIN-SUFFIX,pokebonk.com
