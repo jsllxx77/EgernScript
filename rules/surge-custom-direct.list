@@ -1,0 +1,89 @@
+# NAME: 自定义直连白名单（Surge 版）
+# UPSTREAM: CustomDirect.yaml
+# REPO: https://github.com/jsllxx77/EgernScript/tree/main/rules
+# 本文件由上游 Clash payload 格式机械转换，规则与注释保持一致，仅供 Surge RULE-SET 使用
+# 增删请改上游 .yaml 后重新生成，不要直接编辑本文件
+# TOTAL: 65
+
+# ==================== 1. 自建服务与解析节点 ====================
+DOMAIN-SUFFIX,pro.xns.one
+DOMAIN-SUFFIX,lot-ml.com
+DOMAIN-SUFFIX,sslip.io
+DOMAIN-SUFFIX,gantanhao.com
+DOMAIN-SUFFIX,ex-girlfriendis.best
+DOMAIN-SUFFIX,hybgzs.com
+DOMAIN-SUFFIX,p2p.huya.com
+DOMAIN,green.wi11.de
+# anyrouter.top 已从 Cloudflare 迁至 initrr/阿里ESA；其权威 DNS 对大陆 ECS 仍下发
+# 失效的 Cloudflare 优选IP(bestcf.030101.xyz→104.17.x)导致 TLS 握手失败，故不直连、改走代理
+DOMAIN-SUFFIX,ors.de5.net
+# classifier.dev 免费免Key额度按出口IP判定，走代理(VPS)会被拒 403 proxy_requires_payment
+DOMAIN-SUFFIX,classifier.dev
+# ==================== 2. 腾讯手游与周边全生态 ====================
+# 核心通用对战与底层架构
+DOMAIN-SUFFIX,jkmobile.qq.com
+DOMAIN-SUFFIX,tplay.qq.com
+DOMAIN-SUFFIX,tencent-cloud.net
+DOMAIN-SUFFIX,tencent.com
+DOMAIN-SUFFIX,gcloudcs.com
+DOMAIN-SUFFIX,gcloudsdk.com
+DOMAIN-SUFFIX,gcloud.qq.com
+DOMAIN-SUFFIX,anticheatexpert.com
+DOMAIN-SUFFIX,tcdnos.com
+DOMAIN-SUFFIX,jomodns.com
+# 游戏内组队实时语音 (GCloud Voice)
+DOMAIN-SUFFIX,voice.gcloudcs.com
+DOMAIN-SUFFIX,im.gcloud.qq.com
+# 热门游戏专属域名 (王者/吃鸡/金铲铲/LOL/DNF/CFM等)
+DOMAIN-SUFFIX,smoba.qq.com
+DOMAIN-SUFFIX,gp.qq.com
+DOMAIN-SUFFIX,jcc.qq.com
+DOMAIN-SUFFIX,lolm.qq.com
+DOMAIN-SUFFIX,dnf.qq.com
+DOMAIN-SUFFIX,cfm.qq.com
+# 游戏更新下载、活动与充值 (米大师)
+DOMAIN-SUFFIX,dldir1.qq.com
+DOMAIN-SUFFIX,down.qq.com
+DOMAIN-SUFFIX,game.qq.com
+DOMAIN-SUFFIX,midas.qq.com
+# ==================== 3. 微信与小游戏生态（防卡死） ====================
+DOMAIN-SUFFIX,beacon.qq.com
+DOMAIN-SUFFIX,servicewechat.com
+DOMAIN-SUFFIX,game.weixin.qq.com
+DOMAIN-SUFFIX,wxs.qq.com
+DOMAIN-SUFFIX,qpic.cn
+# ==================== 4. 支付宝与蚂蚁生态 ====================
+DOMAIN-SUFFIX,alipay.com
+DOMAIN-SUFFIX,alipayobjects.com
+DOMAIN-SUFFIX,aliapp.org
+# ==================== 5. 字节跳动与抖音生态（含抖音直播拉流 CDN） ====================
+DOMAIN-SUFFIX,volces.com
+DOMAIN-SUFFIX,bytecdn.cn
+# 抖音主站 / 直播
+DOMAIN-SUFFIX,douyin.com
+DOMAIN-SUFFIX,douyincdn.com
+DOMAIN-SUFFIX,douyinvod.com
+DOMAIN-SUFFIX,douyinstatic.com
+DOMAIN-SUFFIX,douyinpic.com
+# 直播信令 / webcast
+DOMAIN-SUFFIX,amemv.com
+DOMAIN-SUFFIX,snssdk.com
+DOMAIN-SUFFIX,pstatp.com
+DOMAIN-SUFFIX,ipstatp.com
+DOMAIN-SUFFIX,isnssdk.com
+DOMAIN-SUFFIX,sgpstatp.com
+# 字节 CDN / 图片 / 其他
+DOMAIN-SUFFIX,byteimg.com
+DOMAIN-SUFFIX,bytedance.com
+DOMAIN-SUFFIX,volccdn.com
+DOMAIN-SUFFIX,ixigua.com
+DOMAIN-SUFFIX,huoshan.com
+# 抖音直播 CDN 常见 CNAME 落地域
+DOMAIN-SUFFIX,zjcdn.com
+DOMAIN-SUFFIX,wsdvs.com
+DOMAIN-SUFFIX,gccdn.net
+DOMAIN-SUFFIX,cdnhwc2.com
+DOMAIN-SUFFIX,queniukw.com
+DOMAIN-SUFFIX,cdnbuild.net
+# ==================== 6. 其他直连 ====================
+DOMAIN-SUFFIX,pokebonk.com
