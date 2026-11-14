@@ -2,7 +2,7 @@
 #!desc=过滤微博广告及去除各部分推广模块；本文件由 EgernScript 维护，在原模块基础上补充 HTTPDNS 阻断与 adpinpai 广告 CDN 拦截，脚本已自托管
 #!author=RuCu6[https://github.com/RuCu6], zmqcherish[https://github.com/zmqcherish]；合并维护 jsllxx77
 #!icon=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/Weibo.png
-#!category=iKeLee
+#!category=jsllxx77
 #!openUrl=https://apps.apple.com/app/id350962117
 #!tag=去广告
 #!loon_version=3.2.4(787)
