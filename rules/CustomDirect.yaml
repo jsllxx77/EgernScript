@@ -52,6 +52,23 @@ payload:
   - DOMAIN-SUFFIX,wxs.qq.com
   - DOMAIN-SUFFIX,qpic.cn
 
+  # 视频号（finder）：CDN 域名分散在 tc.qq.com / video.qq.com / weixin.qq.com 之下，
+  # 不在 wxs.qq.com 里；不显式放行会被 Advertising 集合 REJECT，
+  # 表现为视频号能进列表但视频无限转圈、缩略图空白。
+  - DOMAIN-SUFFIX,wxsnsdy.tc.qq.com
+  - DOMAIN-SUFFIX,wxsnsdythumb.tc.qq.com
+  - DOMAIN-SUFFIX,vweixinf.tc.qq.com
+  - DOMAIN-SUFFIX,szvweixinf.tc.qq.com
+  - DOMAIN-SUFFIX,wxapp.tc.qq.com
+  - DOMAIN-SUFFIX,wxsnsdy.video.qq.com
+  - DOMAIN-SUFFIX,wxstm.video.qq.com
+  - DOMAIN-SUFFIX,finder.video.qq.com
+  - DOMAIN-SUFFIX,channels.weixin.qq.com
+  - DOMAIN-SUFFIX,szfinder.weixin.qq.com
+  - DOMAIN-SUFFIX,szapp.weixin.qq.com
+  - DOMAIN-SUFFIX,res.wx.qq.com
+  - DOMAIN-SUFFIX,wxqcloud.qq.com.cn
+
   # ==================== 4. 支付宝与蚂蚁生态 ====================
   - DOMAIN-SUFFIX,alipay.com
   - DOMAIN-SUFFIX,alipayobjects.com
